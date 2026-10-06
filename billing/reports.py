@@ -1,8 +1,13 @@
+from decimal import Decimal
+
+from billing.rounding import CENT
+
+
 def _aggregate(invoices):
     totals = {}
     for invoice in invoices:
-        totals[invoice.customer] = totals.get(invoice.customer, 0.0) + invoice.total
-    return totals
+        totals[invoice.customer] = totals.get(invoice.customer, Decimal("0")) + Decimal(str(invoice.total))
+    return {customer: total.quantize(CENT) for customer, total in totals.items()}
 
 
 def _format_rows(totals):
