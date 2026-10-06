@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 
 from billing.discounts import discount_rate
+from billing.lines import line_total
 from billing.rounding import round_currency
 from billing.tax import progressive_tax
 
@@ -13,6 +14,10 @@ class Line:
     description: str
     quantity: int
     unit_price: float
+
+    def __post_init__(self):
+        if self.quantity < 0:
+            raise ValueError("quantity must not be negative")
 
 
 @dataclass(frozen=True)
@@ -26,7 +31,7 @@ class Invoice:
 
 
 def price_invoice(customer, lines, issued_on):
-    subtotal = sum(line.quantity * line.unit_price for line in lines)
+    subtotal = sum(line_total(line) for line in lines)
     discount = subtotal * discount_rate(subtotal)
     taxable = subtotal - discount
     tax = progressive_tax(taxable)
