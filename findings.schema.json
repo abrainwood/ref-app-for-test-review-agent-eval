@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["findings"],
+  "additionalProperties": false,
+  "properties": {
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["file", "test", "tier", "category", "summary"],
+        "additionalProperties": false,
+        "properties": {
+          "file": {"type": "string"},
+          "test": {"type": ["string", "null"]},
+          "tier": {"enum": ["P0", "P1", "P2", "P3", "ARCH", "OBSERVED"]},
+          "category": {"type": "string"},
+          "summary": {"type": "string"}
+        }
+      }
+    }
+  }
+}
