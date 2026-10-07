@@ -121,7 +121,7 @@
     },
     {
       "file": "tests/test_rounding.py",
-      "test": "test_quantize_half_up_returns_cents",
+      "test": "test_quantize_half_up_quantizes_to_cents",
       "tier": "OBSERVED",
       "category": "coupling: imports private _quantize_half_up; pre-existing",
       "summary": "coupling: imports private _quantize_half_up; pre-existing"

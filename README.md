@@ -11,7 +11,7 @@ This orphan branch holds the grading data for the fixture on `main`. Keep it off
   - `isolation` runs the test alone.
   - Plants with `"proof": null` are style or hermeticity defects that no mutation can show; the `category` field states the defect.
 
-Run: `python3 prove.py <path-to-fixture-checkout>` - exits non-zero on any mismatch or missing edit target.
+Run: `python3 prove.py <path-to-fixture-checkout>` - exits non-zero on any mismatch or missing edit target. pytest exit codes 0 = pass, 1 and 2 (failures, collection errors from a rename) = fail; anything else (3, 4 no such target, 5 nothing collected) = error, which never matches an expectation.
 
 The fixture's billing rules are in `SPEC.md` on `main`. The `pasted-expected-value` plant is a real per-line rounding bug that contradicts SPEC.md, and its test pins it.
 
@@ -29,17 +29,20 @@ Any agent, any harness:
 Matching rules (`grade.py`):
 
 - Findings are normalised first: `./x`, absolute paths ending in the repo-relative path, `x.py:7` and backslashes all match `x.py`; `test_x()`, `file.py::test_x`, `Class::test_x` and `test_x[param]` all match `test_x`.
-- plant `test` = `path::name` (or `tests`: a list of such nodeids for a defect spanning several tests): finding `file` is the path and finding `test` is the name. If the plant has `match_keywords`, one must also appear (case-insensitive) in the finding's category + summary. Optional `files` lists extra acceptable files (e.g. production placement); a finding there needs a keyword.
+- Keywords match whole words/phrases, case-insensitively, in category + summary (`important` does not hit `import`, `FakeRates` does not hit `fake`). List inflections explicitly (`coupling`, `coupled`), never stems; the key lint rejects stems.
+- plant `test` = `path::name` (or `tests`: a list of such nodeids for a defect spanning several tests): finding `file` is the path and finding `test` is the name. If the plant has `match_keywords`, one must also appear in the finding's category + summary. Optional `files` lists extra acceptable files (e.g. production placement); a finding there needs a keyword. A keyworded plant is also hit by a finding with `test: null` on its own file that carries a keyword.
 - plant `test` = a file path: finding `file` equals it (or an extra `files` entry) and, if the plant has `match_keywords`, a keyword appears.
-- plant `test` = `repo` or `git:...`: only findings with `"test": null`, with a keyword in category + summary. Keywords are specific phrases, not generic words like "history" or "ruff".
+- plant `test` = `repo` or `git:...`: `files` anchors it (`pyproject.toml`/`ruff.toml`/`setup.cfg`/`repo`; `git history`/`git log`/`git`). Only findings with `"test": null` on an anchor file, with a keyword in category + summary, hit it. The anchor makes broad keywords (`ruff`, `lint`, `refactor`, `rename`) safe.
 - Most specific match wins: a finding feeds only the most specific level it matches (test, then file, then repo). A finding on a test-level plant never also feeds a file-level or repo-wide plant.
-- Decoys use the same rules; `match_keywords` name the wrong accusation, so a legitimate finding elsewhere in a decoy's file is not a false positive. A match is a false positive.
+- Decoys use the same rules. A test-level decoy (`path::name`) has no keywords: any finding on that test is a false positive, because a legitimate test needs no finding. A file-level decoy keeps `match_keywords` naming the wrong accusation, so a legitimate finding elsewhere in that file (a rename, a parametrize) is not a false positive.
 - A hit is tier-correct when the finding tier is accepted for the mode; with no hit, the plant passes only if `OMITTED` is accepted.
 - Every plant and decoy in the report carries `matched`: the indexes (into the findings list) of the findings that matched it, so a mis-match is visible.
+- `near_misses` (count in `summary.near_misses`): unkeyed findings that land on a keyed test, file or anchor but fail the keyword check, with the candidate plant/decoy ids. Read these before tuning keywords.
+- Extra keys in a finding (e.g. `line`) are ignored with a WARNING; missing required keys or wrong types are rejected. `file: "x.py::test_x"` with `test: null` is read as file plus test.
 - A finding matching no plant, decoy or `known_noise` entry is `unkeyed`. Triage each unkeyed finding:
   - a real defect nobody keyed -> add it as a plant;
   - harmless -> add it to `known_noise`;
   - it describes an existing plant but the matcher missed it -> fix the matcher or keywords of that plant, not a new plant.
-- `tests/test_grade.py` lints the key: every plant's own category at its own target hits exactly that plant and no decoy.
+- `tests/test_grade.py` lints the key: every plant's own category at its own target hits exactly that plant and no decoy; no keyword is a known stem or generic word. `tests/test_key_against_fixture.py` clones the fixture at `fixture_sha` (source: `$REF_APP_REPO` or GitHub) and asserts every plant, decoy and proof nodeid exists (`test_divide_by_zero` is commented out on purpose). Integration tests are marked `integration`; `-m 'not integration'` runs the fast set.
 
 `canary/` holds findings files that prove the grader discriminates: `perfect_findings.<mode>.json` must score every plant tier-ok with no false positives or unkeyed findings; `known_bad_findings.json` must not. Both are checked by `tests/` (`python3 -m pytest tests`).

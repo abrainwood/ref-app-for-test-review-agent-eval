@@ -1,11 +1,15 @@
 import argparse
 import json
+import logging
 import re
 import sys
 from pathlib import Path
 
 ANSWER_KEY = Path(__file__).resolve().parent / "answer_key.json"
 SCHEMA = Path(__file__).resolve().parent / "findings.schema.json"
+
+
+LOGGER = logging.getLogger("grade")
 
 
 class InvalidFindings(ValueError):
@@ -17,13 +21,15 @@ def validate(findings_doc, schema):
     findings = findings_doc.get("findings") if isinstance(findings_doc, dict) else None
     if not isinstance(findings, list):
         raise InvalidFindings("top level must be an object with a 'findings' list")
-    for key in findings_doc.keys() - schema["properties"].keys():
-        raise InvalidFindings(f"unexpected top-level key {key!r}")
+    unexpected_top_level = sorted(findings_doc.keys() - schema["properties"].keys())
+    if unexpected_top_level:
+        raise InvalidFindings(f"unexpected top-level key {unexpected_top_level[0]!r}")
     for index, finding in enumerate(findings):
         if not isinstance(finding, dict):
             raise InvalidFindings(f"findings[{index}] is not an object")
-        for key in finding.keys() - item["properties"].keys():
-            raise InvalidFindings(f"findings[{index}] has unexpected key {key!r}")
+        extra_keys = sorted(finding.keys() - item["properties"].keys())
+        if extra_keys:
+            LOGGER.warning("findings[%d] has extra keys %s, ignored", index, extra_keys)
         for field in item["required"]:
             if field not in finding:
                 raise InvalidFindings(f"findings[{index}] is missing '{field}'")
@@ -36,9 +42,13 @@ def validate(findings_doc, schema):
             raise InvalidFindings(f"findings[{index}].test must be a string or null")
 
 
+def _as_whole_word(keyword):
+    return re.compile(rf"(?<!\w){re.escape(keyword)}(?!\w)", re.IGNORECASE)
+
+
 def _mentions_any(keywords, finding):
-    text = f"{finding['category']} {finding['summary']}".lower()
-    return any(keyword.lower() in text for keyword in keywords)
+    text = f"{finding['category']} {finding['summary']}"
+    return any(_as_whole_word(keyword).search(text) for keyword in keywords)
 
 
 def _keywords_ok(entry, finding):
@@ -97,15 +107,22 @@ def _file_level_match(entry, finding):
     return any(_same_path(finding["file"], path) for path in paths) and _keywords_ok(entry, finding)
 
 
+def _placement_match(entry, finding):
+    own_file = _nodeids(entry)[0].partition("::")[0]
+    placements = entry.get("files", []) + ([own_file] if finding["test"] is None else [])
+    on_placement = any(_same_path(finding["file"], path) for path in placements)
+    return on_placement and "match_keywords" in entry and _keywords_ok(entry, finding)
+
+
 def _match_level(entry, finding):
     if _is_repo_wide(entry):
-        repo_hit = finding["test"] is None and _mentions_any(entry["match_keywords"], finding)
+        anchored = any(_same_path(finding["file"].lower(), anchor.lower()) for anchor in entry["files"])
+        repo_hit = finding["test"] is None and anchored and _mentions_any(entry["match_keywords"], finding)
         return REPO_LEVEL if repo_hit else None
     if "::" in _nodeids(entry)[0]:
         if _test_level_match(entry, finding):
             return TEST_LEVEL
-        extra = any(_same_path(finding["file"], path) for path in entry.get("files", []))
-        return FILE_LEVEL if extra and _keywords_ok(entry, finding) else None
+        return FILE_LEVEL if _placement_match(entry, finding) else None
     return FILE_LEVEL if _file_level_match(entry, finding) else None
 
 
@@ -126,6 +143,32 @@ def _matched_by_entry(entries, findings):
     return matched
 
 
+def _is_test_level(entry):
+    return not _is_repo_wide(entry) and "::" in _nodeids(entry)[0]
+
+
+def _lands_on(entry, finding):
+    if _is_repo_wide(entry):
+        return finding["test"] is None and any(
+            _same_path(finding["file"].lower(), anchor.lower()) for anchor in entry["files"])
+    if _is_test_level(entry):
+        names_the_test = any(_same_path(finding["file"], nodeid.partition("::")[0])
+                             and finding["test"] == nodeid.partition("::")[2] for nodeid in _nodeids(entry))
+        own_file = _nodeids(entry)[0].partition("::")[0]
+        on_file = finding["test"] is None and _same_path(finding["file"], own_file)
+        return names_the_test or on_file or any(_same_path(finding["file"], f) for f in entry.get("files", []))
+    return any(_same_path(finding["file"], path) for path in [entry["test"], *entry.get("files", [])])
+
+
+def _near_misses(entries, findings, claimed):
+    near = []
+    for index, finding in enumerate(map(_normalised, findings)):
+        candidates = [e["id"] for e in entries if _lands_on(e, finding)]
+        if index not in claimed and candidates:
+            near.append({"index": index, "finding": findings[index], "candidates": candidates})
+    return near
+
+
 def _grade_plant(plant, findings, matched, mode):
     seen = [findings[i]["tier"] for i in matched]
     accepted = plant["expected"][mode]
@@ -137,7 +180,7 @@ def _grade_plant(plant, findings, matched, mode):
     }
 
 
-def _summarise(plants, decoys, unkeyed, known_noise_count):
+def _summarise(plants, decoys, unkeyed, near_misses, known_noise_count):
     return {
         "plants_total": len(plants),
         "plants_hit": sum(p["hit"] for p in plants.values()),
@@ -145,6 +188,7 @@ def _summarise(plants, decoys, unkeyed, known_noise_count):
         "decoys_total": len(decoys),
         "false_positives": sum(d["false_positive"] for d in decoys.values()),
         "unkeyed": len(unkeyed),
+        "near_misses": len(near_misses),
         "known_noise": known_noise_count,
     }
 
@@ -163,13 +207,15 @@ def grade(findings_doc, key, mode):
     claimed = {index for indexes in matched.values() for index in indexes}
     known_noise_count = len({i for position in range(noise_offset, len(entries)) for i in matched[position]})
     unkeyed = [f for index, f in enumerate(findings) if index not in claimed]
+    near_misses = _near_misses(plant_entries + decoy_entries, findings, claimed)
     return {
         "mode": mode,
         "plants": plants,
         "decoys": decoys,
         "unkeyed": unkeyed,
+        "near_misses": near_misses,
         "known_noise_count": known_noise_count,
-        "summary": _summarise(plants, decoys, unkeyed, known_noise_count),
+        "summary": _summarise(plants, decoys, unkeyed, near_misses, known_noise_count),
     }
 
 

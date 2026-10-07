@@ -54,10 +54,10 @@ def test_file_plant_needs_the_file_and_a_keyword_in_category_or_summary():
     assert [r["plants"]["b"]["hit"] for r in (hit, wrong_text, wrong_file)] == [True, False, False]
 
 
-def test_repo_and_git_plants_hit_on_a_keyword_in_any_finding_regardless_of_file():
+def test_repo_and_git_plants_hit_on_a_keyword_in_a_finding_on_one_of_their_anchor_files():
     k = key([
-        plant("lint", "repo", match_keywords=["ruff", "lint"]),
-        plant("hist", "git:Refactor: rename", match_keywords=["refactor commit"]),
+        plant("lint", "repo", files=["pyproject.toml"], match_keywords=["ruff", "lint"]),
+        plant("hist", "git:Refactor: rename", files=["git history"], match_keywords=["refactor commit"]),
     ])
     doc = {"findings": [finding("pyproject.toml", tier="P1", summary="No Ruff config"),
                         finding("tests/test_a.py", tier="P2", summary="the unrelated thing")]}
@@ -75,6 +75,39 @@ def test_wrong_tier_is_a_hit_but_not_tier_ok_and_mode_selects_accepted_tiers():
 
     assert grade.grade(doc, k, "slice")["plants"]["a"]["tier_ok"] is False
     assert grade.grade(doc, k, "whole_suite")["plants"]["a"]["tier_ok"] is True
+
+
+@pytest.mark.parametrize("tiers, expected", [(["P3", "P0"], True), (["P0", "P3"], True), (["P3"], False)])
+def test_tier_ok_when_any_matching_finding_has_an_accepted_tier(tiers, expected):
+    k = key([plant("a", "tests/x.py::t", slice=("P0",))])
+    doc = {"findings": [finding("tests/x.py", "t", tier=tier) for tier in tiers]}
+
+    assert grade.grade(doc, k, "slice")["plants"]["a"]["tier_ok"] is expected
+
+
+@pytest.mark.parametrize("keyword, text", [
+    ("import", "the module has important side effects"),
+    ("export", "values are exported twice"),
+    ("lift", "an uplift in coverage"),
+    ("fake", "FakeRates stands in"),
+    ("mock", "the call is mocked out"),
+])
+def test_keywords_match_whole_words_only(keyword, text):
+    k = key([plant("a", "tests/x.py", match_keywords=[keyword])])
+
+    report = grade.grade({"findings": [finding("tests/x.py", summary=text)]}, k, "slice")
+
+    assert report["plants"]["a"]["hit"] is False
+
+
+@pytest.mark.parametrize("keyword, text", [("import", "Import of _x"), ("/tmp", "fixed /tmp file"),
+                                           ("wall-clock", "uses the wall-clock"), ("__all__", "adds it to __all__.")])
+def test_keywords_with_punctuation_still_match_as_whole_words(keyword, text):
+    k = key([plant("a", "tests/x.py", match_keywords=[keyword])])
+
+    report = grade.grade({"findings": [finding("tests/x.py", summary=text)]}, k, "slice")
+
+    assert report["plants"]["a"]["hit"] is True
 
 
 def test_no_hit_passes_only_when_omitted_is_accepted():
@@ -128,28 +161,10 @@ def test_summary_counts_plants_decoys_and_noise():
 
     assert grade.grade(doc, k, "slice")["summary"] == {
         "plants_total": 3, "plants_hit": 2, "plants_tier_ok": 1,
-        "decoys_total": 1, "false_positives": 1, "unkeyed": 1, "known_noise": 0}
+        "decoys_total": 1, "false_positives": 1, "unkeyed": 1, "near_misses": 0, "known_noise": 0}
 
 
 REAL_KEY = json.loads((Path(__file__).resolve().parent.parent / "answer_key.json").read_text())
-
-
-def test_discounts_file_finding_about_a_vacuous_loop_does_not_hit_missing_boundary():
-    doc = {"findings": [finding("tests/test_discounts.py", summary="vacuous loop passes on empty list")]}
-
-    plants = grade.grade(doc, REAL_KEY, "slice")["plants"]
-
-    assert plants["missing-boundary"]["hit"] is False
-
-
-def test_vacuous_loop_test_finding_hits_vacuous_loop_but_not_missing_boundary():
-    doc = {"findings": [finding("tests/test_discounts.py", "test_every_bulk_order_is_discounted",
-                                category="vacuous loop", summary="asserts inside a loop over an empty list")]}
-
-    plants = grade.grade(doc, REAL_KEY, "slice")["plants"]
-
-    assert plants["vacuous-loop"] == {"hit": True, "tier_ok": True, "tiers_seen": ["P0"], "matched": [0]}
-    assert plants["missing-boundary"]["hit"] is False
 
 
 GRADE_PY = Path(__file__).resolve().parent.parent / "grade.py"
@@ -335,6 +350,13 @@ def test_test_only_export_is_accepted_on_production_placement(file):
     assert found == {"test-only-export"}
 
 
+@pytest.mark.parametrize("file", ["billing/reports.py", "billing/discounts.py", "billing/__init__.py"])
+def test_a_finding_on_a_production_placement_file_without_a_keyword_gets_no_credit(file):
+    found = hit_ids([finding(file, None, "P1", "Style", "the module is a bit long")])
+
+    assert found == set()
+
+
 def test_legitimate_cleanup_in_a_decoy_file_is_not_a_false_positive():
     findings = [finding("tests/test_invoice.py", "test_totals", "P3", "Naming", "rename the local variable"),
                 finding("tests/test_tax.py", None, "P3", "Style", "use parametrize for the bracket table")]
@@ -401,7 +423,7 @@ def test_a_plants_own_category_at_its_own_target_hits_exactly_that_plant(entry):
 
 @pytest.mark.parametrize("entry", REAL_KEY["decoys"], ids=lambda e: e["id"])
 def test_a_decoys_accusation_at_its_target_hits_exactly_that_decoy(entry):
-    keyword = entry["match_keywords"][0]
+    keyword = entry.get("match_keywords", ["a remark"])[0]
     path = entry["test"].partition("::")[0]
     doc = {"findings": [finding(path, entry["test"].partition("::")[2] or None, "P1", keyword, keyword)]}
 
@@ -417,3 +439,140 @@ def test_a_finding_that_names_a_test_never_feeds_a_repo_wide_plant_even_on_match
                              "There is no Ruff config here; enable lint rules and a refactor commit would show it")])
 
     assert found == set()
+
+
+UNSAFE_KEYWORDS = {"coupl", "aggregat", "collid", "hermet", "test", "tests", "assert", "file", "code"}
+
+
+def keyword_lint_problems(key_doc):
+    return sorted(f"{entry['id']}: {keyword!r}"
+                  for entry in key_doc["plants"] + key_doc["decoys"]
+                  for keyword in entry.get("match_keywords", []) if keyword.lower() in UNSAFE_KEYWORDS)
+
+
+def test_the_key_lint_flags_a_stem_keyword_that_whole_word_matching_cannot_see():
+    bad = key([plant("a", "tests/x.py", match_keywords=["coupl"])])
+
+    assert keyword_lint_problems(bad) == ["a: 'coupl'"]
+
+
+def test_no_keyword_in_the_real_key_is_a_stem_trap():
+    assert keyword_lint_problems(REAL_KEY) == []
+
+
+@pytest.mark.parametrize("summary", ["no [tool.ruff] section", "Ruff is not configured",
+                                     "add ruff with flake8-pytest-style", "add Ruff"])
+def test_lint_config_probe_phrasings_on_the_config_file_hit(summary):
+    found = hit_ids([finding("pyproject.toml", None, "P1", "Tooling", summary)])
+
+    assert found == {"lint-config-missing"}
+
+
+@pytest.mark.parametrize("summary", ["rename refactor", "refactoring commit"])
+def test_refactor_commit_probe_phrasings_on_git_history_hit(summary):
+    found = hit_ids([finding("git history", None, "P1", "History", summary)], "whole_suite")
+
+    assert found == {"refactor-commit-edited-tests"}
+
+
+@pytest.mark.parametrize("file", ["tests/test_lines.py", "README.md", "git history"])
+def test_lint_config_phrasing_off_its_anchor_files_does_not_hit(file):
+    found = hit_ids([finding(file, None, "P1", "Tooling", "Ruff is not configured, add lint rules")])
+
+    assert "lint-config-missing" not in found
+
+
+def test_refactor_phrasing_on_a_config_file_does_not_hit_the_history_plant():
+    found = hit_ids([finding("pyproject.toml", None, "P1", "History", "refactoring commit")], "whole_suite")
+
+    assert "refactor-commit-edited-tests" not in found
+
+
+@pytest.mark.parametrize("summary", [
+    "the header comparison result is discarded, so the test passes whatever export writes",
+    "useless comparison", "a missing assert", "the expression has no effect"])
+def test_unfailing_assert_phrasings_hit(summary):
+    found = hit_ids([finding(EXPORT, "test_export_writes_header", "P0", "Weak test", summary)])
+
+    assert found == {"unfailing-assert"}
+
+
+def test_architecture_note_filed_on_the_reports_interface_test_file_hits_the_plant_and_not_the_decoy():
+    findings = [finding("tests/test_reports.py", None, "ARCH", "Hidden aggregation",
+                        "_aggregate is private and build_report rounds to whole units")]
+
+    report = grade.grade({"findings": findings}, REAL_KEY, "slice")
+
+    assert report["plants"]["architecture-report-aggregation"]["hit"] is True
+    assert report["decoys"]["report-interface"]["false_positive"] is False
+
+
+def test_helper_direct_tests_is_hit_by_a_finding_on_the_helpers_production_file():
+    found = hit_ids([finding("billing/lines.py", None, "P2", "Helper tested directly",
+                             "line_total is an in-package helper only invoice.py calls")])
+
+    assert found == {"helper-direct-tests"}
+
+
+def test_a_file_level_private_import_finding_hits_it():
+    found = hit_ids([finding(DISCOUNTS, None, "P1", "Private import", "imports _tier_for from billing.discounts")])
+
+    assert found == {"private-import"}
+
+
+def test_a_file_level_finding_does_not_hit_a_test_level_plant_without_keywords():
+    found = hit_ids([finding("tests/test_invoice_lines.py", None, "P1", "Style", "something about quality")])
+
+    assert found == set()
+
+
+TEST_LEVEL_DECOYS = [d for d in REAL_KEY["decoys"] if "::" in d["test"]]
+
+
+@pytest.mark.parametrize("decoy", TEST_LEVEL_DECOYS, ids=lambda d: d["id"])
+def test_any_finding_on_a_test_level_decoy_is_a_false_positive_whatever_it_says(decoy):
+    path, _, name = decoy["test"].partition("::")
+
+    decoys = grade.grade({"findings": [finding(path, name, "P3", "Anything", "a harmless remark")]},
+                         REAL_KEY, "slice")["decoys"]
+
+    assert decoys[decoy["id"]]["false_positive"] is True
+
+
+def test_an_unkeyed_finding_on_a_keyed_file_is_a_near_miss_naming_the_candidates():
+    k = key([plant("p", "tests/x.py", match_keywords=["boundary"])], decoys=[{"id": "d", "test": "tests/x.py",
+                                                                        "match_keywords": ["wrong level"]}])
+    stray = finding("tests/x.py", summary="something else")
+
+    report = grade.grade({"findings": [finding("tests/other.py", summary="boundary"), stray]}, k, "slice")
+
+    assert report["near_misses"] == [{"index": 1, "finding": stray, "candidates": ["p", "d"]}]
+    assert report["summary"]["near_misses"] == 1
+    assert report["summary"]["unkeyed"] == 2
+
+
+def test_an_unkeyed_finding_on_a_keyed_test_or_a_repo_anchor_is_a_near_miss():
+    k = key([plant("t", "tests/x.py::test_one", match_keywords=["boundary"]),
+             plant("r", "repo", files=["pyproject.toml"], match_keywords=["ruff"])])
+    on_test = finding("tests/x.py", "test_one", summary="unrelated")
+    on_anchor = finding("pyproject.toml", None, summary="unrelated")
+    on_other_test = finding("tests/x.py", "test_two", summary="boundary")
+
+    report = grade.grade({"findings": [on_test, on_anchor, on_other_test]}, k, "slice")
+
+    assert [(m["index"], m["candidates"]) for m in report["near_misses"]] == [(0, ["t"]), (1, ["r"])]
+
+
+def test_a_keyed_finding_is_not_a_near_miss():
+    k = key([plant("p", "tests/x.py::t")])
+
+    report = grade.grade({"findings": [finding("tests/x.py", "t")]}, k, "slice")
+
+    assert report["near_misses"] == []
+
+
+def test_a_file_given_as_path_and_test_separated_by_double_colon_names_the_test():
+    found = hit_ids([finding(f"{DISCOUNTS}::test_every_bulk_order_is_discounted", None, "P0", "Vacuous loop",
+                             "never runs")])
+
+    assert found == {"vacuous-loop"}

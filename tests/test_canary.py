@@ -20,8 +20,11 @@ def is_perfect(summary):
             and summary["false_positives"] == 0 and summary["unkeyed"] == 0)
 
 
+HALF = 0.5
+
+
 def misses_most_plants(summary):
-    return summary["plants_tier_ok"] < summary["plants_total"] - 5
+    return summary["plants_tier_ok"] < HALF * summary["plants_total"]
 
 
 @pytest.mark.parametrize("mode", MODES)
@@ -34,7 +37,7 @@ def test_perfect_canary_passes_every_plant_with_no_decoys_or_noise(mode):
     assert summary == {
         "plants_total": len(KEY["plants"]), "plants_hit": len(KEY["plants"]),
         "plants_tier_ok": len(KEY["plants"]),
-        "decoys_total": len(KEY["decoys"]), "false_positives": 0, "unkeyed": 0, "known_noise": 0}
+        "decoys_total": len(KEY["decoys"]), "false_positives": 0, "unkeyed": 0, "near_misses": 0, "known_noise": 0}
 
 
 @pytest.mark.parametrize("mode", MODES)
@@ -54,16 +57,18 @@ def test_known_bad_canary_fails_on_exactly_the_expected_axes(mode):
 
 @pytest.mark.parametrize("mode", MODES)
 def test_an_empty_findings_file_is_neither_perfect_nor_better_than_known_bad(mode):
-    doc = {"findings": []}
-    grade.validate(doc, SCHEMA)
+    empty_doc = {"findings": []}
+    grade.validate(empty_doc, SCHEMA)
 
-    summary = grade.grade(doc, KEY, mode)["summary"]
+    empty = grade.grade(empty_doc, KEY, mode)["summary"]
+    known_bad = grade.grade(load("known_bad_findings.json"), KEY, mode)["summary"]
 
-    assert not is_perfect(summary)
-    assert misses_most_plants(summary)
-    assert summary["plants_hit"] == 0
+    assert not is_perfect(empty)
+    assert misses_most_plants(empty)
+    assert empty["plants_hit"] == 0
+    assert (empty["plants_hit"], empty["plants_tier_ok"]) <= (known_bad["plants_hit"], known_bad["plants_tier_ok"])
 
 
-def test_the_perfect_bar_rejects_the_known_bad_canary():
-    for mode in MODES:
-        assert not is_perfect(grade.grade(load("known_bad_findings.json"), KEY, mode)["summary"])
+@pytest.mark.parametrize("mode", MODES)
+def test_the_perfect_bar_rejects_the_known_bad_canary(mode):
+    assert not is_perfect(grade.grade(load("known_bad_findings.json"), KEY, mode)["summary"])

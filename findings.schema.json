@@ -17,11 +17,12 @@
           "category",
           "summary"
         ],
-        "additionalProperties": false,
+        "additionalProperties": true,
+        "description": "Extra keys such as 'line' are ignored by the grader, which logs a WARNING.",
         "properties": {
           "file": {
             "type": "string",
-            "description": "Repo-relative path, e.g. tests/test_x.py. No leading ./, absolute path or line number. A short label such as 'git history' for history-level findings."
+            "description": "Repo-relative path, e.g. tests/test_x.py. No leading ./, absolute path or line number. A short label such as 'git history' for history-level findings. 'path::test_name' is accepted and read as file plus test when test is null."
           },
           "test": {
             "type": [
