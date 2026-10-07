@@ -19,6 +19,8 @@ Also write your findings as JSON matching the schema in `{schema_path}` to `{fin
 
 Use `"test": null` for findings about a whole file or the repository, and set `file` to the most relevant path (or a short label such as `git history` for history-level findings).
 
+Format rules for the JSON: `file` is a repo-relative path such as `tests/test_x.py` (no leading `./`, no absolute path, no line number). `test` is the bare test function name such as `test_x` (no `()`, no `file::` prefix, no parameter suffix), or `null`. Write one finding per defect. Report defects only - no positive notes about things that are fine.
+
 ## Mode: whole_suite
 
 Review the entire test suite of the current git repository, including how the tests came to be: read the git history as well as the current files.
@@ -37,3 +39,5 @@ Also write your findings as JSON matching the schema in `{schema_path}` to `{fin
 - OBSERVED: a problem you noticed that is not worth acting on
 
 Use `"test": null` for findings about a whole file or the repository, and set `file` to the most relevant path (or a short label such as `git history` for history-level findings).
+
+Format rules for the JSON: `file` is a repo-relative path such as `tests/test_x.py` (no leading `./`, no absolute path, no line number). `test` is the bare test function name such as `test_x` (no `()`, no `file::` prefix, no parameter suffix), or `null`. Write one finding per defect. Report defects only - no positive notes about things that are fine.

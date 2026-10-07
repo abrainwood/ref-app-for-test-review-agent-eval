@@ -11,10 +11,25 @@ def _count_stats(counts):
     return {"per_run": counts, "mean": sum(counts) / len(counts)}
 
 
+class InvalidReports(ValueError):
+    pass
+
+
+def _single_mode(reports):
+    if not reports:
+        raise InvalidReports("no reports given")
+    modes = {r["mode"] for r in reports}
+    if len(modes) > 1:
+        raise InvalidReports(f"mixed modes: {sorted(modes)}")
+    return modes.pop()
+
+
 def summarise(reports):
+    mode = _single_mode(reports)
     plant_ids = reports[0]["plants"]
     decoy_ids = reports[0]["decoys"]
     return {
+        "mode": mode,
         "runs": len(reports),
         "plants": {
             pid: {
@@ -34,7 +49,12 @@ def summarise(reports):
 
 def main(paths):
     reports = [json.loads(Path(p).read_text()) for p in paths]
-    print(json.dumps(summarise(reports), indent=2))
+    try:
+        summary = summarise(reports)
+    except InvalidReports as error:
+        print(f"cannot summarise: {error}", file=sys.stderr)
+        return 2
+    print(json.dumps(summary, indent=2))
     return 0
 
 

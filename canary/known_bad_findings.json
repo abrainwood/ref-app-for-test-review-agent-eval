@@ -11,8 +11,8 @@
       "file": "tests/test_export.py",
       "test": "test_export_writes_header",
       "tier": "P3",
-      "category": "style",
-      "summary": "wrong tier"
+      "category": "no-op comparison",
+      "summary": "bare comparison is never asserted; wrong tier: reported as cleanup"
     },
     {
       "file": "tests/test_invoice.py",

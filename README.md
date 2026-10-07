@@ -28,11 +28,18 @@ Any agent, any harness:
 
 Matching rules (`grade.py`):
 
-- plant `test` = `path::name`: finding `file` equals `path` and finding `test` equals `name` (or the full nodeid).
-- plant `test` = a file path: finding `file` equals it and, if the plant has `match_keywords`, any keyword appears (case-insensitive) in the finding's category + summary.
-- plant `test` = `repo` or `git:...`: any finding whose category + summary contains a `match_keywords` entry.
+- Findings are normalised first: `./x`, absolute paths ending in the repo-relative path, `x.py:7` and backslashes all match `x.py`; `test_x()`, `file.py::test_x`, `Class::test_x` and `test_x[param]` all match `test_x`.
+- plant `test` = `path::name` (or `tests`: a list of such nodeids for a defect spanning several tests): finding `file` is the path and finding `test` is the name. If the plant has `match_keywords`, one must also appear (case-insensitive) in the finding's category + summary. Optional `files` lists extra acceptable files (e.g. production placement); a finding there needs a keyword.
+- plant `test` = a file path: finding `file` equals it (or an extra `files` entry) and, if the plant has `match_keywords`, a keyword appears.
+- plant `test` = `repo` or `git:...`: only findings with `"test": null`, with a keyword in category + summary. Keywords are specific phrases, not generic words like "history" or "ruff".
+- Most specific match wins: a finding feeds only the most specific level it matches (test, then file, then repo). A finding on a test-level plant never also feeds a file-level or repo-wide plant.
+- Decoys use the same rules; `match_keywords` name the wrong accusation, so a legitimate finding elsewhere in a decoy's file is not a false positive. A match is a false positive.
 - A hit is tier-correct when the finding tier is accepted for the mode; with no hit, the plant passes only if `OMITTED` is accepted.
-- Decoys match by the same rules (no keywords for file-level decoys); a match is a false positive.
-- A finding matching no plant, decoy or `known_noise` entry is `unkeyed`. Triage each: add it as a plant (a real defect) or to `known_noise` (counted, not a defect).
+- Every plant and decoy in the report carries `matched`: the indexes (into the findings list) of the findings that matched it, so a mis-match is visible.
+- A finding matching no plant, decoy or `known_noise` entry is `unkeyed`. Triage each unkeyed finding:
+  - a real defect nobody keyed -> add it as a plant;
+  - harmless -> add it to `known_noise`;
+  - it describes an existing plant but the matcher missed it -> fix the matcher or keywords of that plant, not a new plant.
+- `tests/test_grade.py` lints the key: every plant's own category at its own target hits exactly that plant and no decoy.
 
 `canary/` holds findings files that prove the grader discriminates: `perfect_findings.<mode>.json` must score every plant tier-ok with no false positives or unkeyed findings; `known_bad_findings.json` must not. Both are checked by `tests/` (`python3 -m pytest tests`).

@@ -3,6 +3,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 import grade
 
 
@@ -23,7 +25,7 @@ def test_test_level_plant_is_hit_by_matching_file_and_test_name():
 
     report = grade.grade({"findings": [finding("tests/test_x.py", "test_one")]}, k, "slice")
 
-    assert report["plants"]["a"] == {"hit": True, "tier_ok": True, "tiers_seen": ["P0"]}
+    assert report["plants"]["a"] == {"hit": True, "tier_ok": True, "tiers_seen": ["P0"], "matched": [0]}
 
 
 def test_test_given_as_full_nodeid_is_a_hit():
@@ -39,7 +41,7 @@ def test_different_test_in_same_file_is_not_a_hit():
 
     report = grade.grade({"findings": [finding("tests/test_x.py", "test_two")]}, k, "slice")
 
-    assert report["plants"]["a"] == {"hit": False, "tier_ok": False, "tiers_seen": []}
+    assert report["plants"]["a"] == {"hit": False, "tier_ok": False, "tiers_seen": [], "matched": []}
 
 
 def test_file_plant_needs_the_file_and_a_keyword_in_category_or_summary():
@@ -92,8 +94,9 @@ def test_decoys_flag_test_level_and_file_level_matches_as_false_positives():
 
     decoys = grade.grade(doc, k, "slice")["decoys"]
 
-    assert decoys == {"d_test": {"false_positive": True}, "d_file": {"false_positive": True},
-                      "d_clean": {"false_positive": False}}
+    assert decoys == {"d_test": {"false_positive": True, "matched": [0]},
+                      "d_file": {"false_positive": True, "matched": [1]},
+                      "d_clean": {"false_positive": False, "matched": []}}
 
 
 def test_findings_matching_nothing_are_unkeyed_and_known_noise_is_counted_separately():
@@ -145,34 +148,272 @@ def test_vacuous_loop_test_finding_hits_vacuous_loop_but_not_missing_boundary():
 
     plants = grade.grade(doc, REAL_KEY, "slice")["plants"]
 
-    assert plants["vacuous-loop"] == {"hit": True, "tier_ok": True, "tiers_seen": ["P0"]}
+    assert plants["vacuous-loop"] == {"hit": True, "tier_ok": True, "tiers_seen": ["P0"], "matched": [0]}
     assert plants["missing-boundary"]["hit"] is False
 
 
 GRADE_PY = Path(__file__).resolve().parent.parent / "grade.py"
 
 
-def run_cli(tmp_path, doc, *args):
+def write_findings(tmp_path, doc):
     path = tmp_path / "findings.json"
     path.write_text(json.dumps(doc))
-    return subprocess.run([sys.executable, str(GRADE_PY), str(path), *args], capture_output=True, text=True)
+    return str(path)
 
 
-def test_cli_prints_the_json_report_for_the_chosen_mode(tmp_path):
-    doc = {"findings": [finding("tests/test_export.py", "test_export_writes_header")]}
+def test_cli_prints_the_json_report_for_the_chosen_mode(tmp_path, capsys):
+    doc = {"findings": [finding("tests/test_export.py", "test_export_writes_header", "P0", "No-op comparison",
+                                "bare comparison is never asserted")]}
 
-    completed = run_cli(tmp_path, doc, "--mode", "slice")
+    code = grade.main([write_findings(tmp_path, doc), "--mode", "slice"])
 
-    assert completed.returncode == 0, completed.stderr
-    report = json.loads(completed.stdout)
+    assert code == 0
+    report = json.loads(capsys.readouterr().out)
     assert report["mode"] == "slice"
     assert report["plants"]["unfailing-assert"]["hit"] is True
 
 
-def test_cli_rejects_findings_that_violate_the_schema(tmp_path):
+def test_cli_rejects_findings_that_violate_the_schema(tmp_path, capsys):
     doc = {"findings": [{"file": "tests/x.py", "tier": "P9", "category": "c", "summary": "s", "test": None}]}
 
-    completed = run_cli(tmp_path, doc, "--mode", "slice")
+    code = grade.main([write_findings(tmp_path, doc), "--mode", "slice"])
 
-    assert completed.returncode == 2
-    assert "tier" in completed.stderr
+    assert code == 2
+    assert "tier" in capsys.readouterr().err
+
+
+def test_cli_rejects_a_missing_or_unparseable_file(tmp_path, capsys):
+    broken = tmp_path / "broken.json"
+    broken.write_text("{not json")
+
+    codes = [grade.main([str(tmp_path / "absent.json"), "--mode", "slice"]),
+             grade.main([str(broken), "--mode", "slice"])]
+
+    assert codes == [2, 2]
+    assert capsys.readouterr().err.count("invalid findings file") == 2
+
+
+def test_running_grade_py_as_a_script_wires_main(tmp_path):
+    completed = subprocess.run(
+        [sys.executable, str(GRADE_PY), write_findings(tmp_path, {"findings": []}), "--mode", "slice"],
+        capture_output=True, text=True)
+
+    assert completed.returncode == 0, completed.stderr
+    assert json.loads(completed.stdout)["mode"] == "slice"
+
+
+def real_plants(findings, mode="slice"):
+    return grade.grade({"findings": findings}, REAL_KEY, mode)["plants"]
+
+
+def hit_ids(findings, mode="slice"):
+    return {pid for pid, p in real_plants(findings, mode).items() if p["hit"]}
+
+
+DISCOUNTS = "tests/test_discounts.py"
+EXPORT = "tests/test_export.py"
+
+
+def test_docstring_only_finding_does_not_hit_private_import():
+    found = hit_ids([finding(DISCOUNTS, "test_tier_lookup_returns_name_and_rate", "P3",
+                             "Prose docstring", "The test carries a docstring explaining what it checks")])
+
+    assert found == {"test-docstring"}
+
+
+def test_private_import_finding_does_not_hit_docstring():
+    found = hit_ids([finding(DISCOUNTS, "test_tier_lookup_returns_name_and_rate", "P1",
+                             "Coupling to private helper", "Imports _tier_for from billing.discounts")])
+
+    assert found == {"private-import"}
+
+
+def test_sleep_only_finding_does_not_hit_unfailing_assert():
+    found = hit_ids([finding(EXPORT, "test_export_writes_header", "P1",
+                             "Real sleep in test", "time.sleep(0.2) makes the test slow and flaky")])
+
+    assert found == {"sleep-in-test"}
+
+
+def test_bare_comparison_finding_does_not_hit_sleep():
+    found = hit_ids([finding(EXPORT, "test_export_writes_header", "P0",
+                             "No-op comparison", "rows[0] == [...] is never asserted so the test cannot fail")])
+
+    assert found == {"unfailing-assert"}
+
+
+def test_finding_naming_a_test_level_plant_does_not_also_feed_the_file_level_boundary_plant():
+    found = hit_ids([finding(DISCOUNTS, "test_every_bulk_order_is_discounted", "P0", "Vacuous loop",
+                             "No SAMPLE_SUBTOTALS value is >= BULK_THRESHOLD so the loop never runs")])
+
+    assert found == {"vacuous-loop"}
+
+
+def test_fixed_tmp_finding_on_a_test_with_other_test_level_plants_falls_back_to_the_file_plant():
+    found = hit_ids([finding(EXPORT, "test_export_writes_header", "P1", "Fixed /tmp path",
+                             "EXPORT_PATH is a fixed /tmp file that collides under parallel runs")])
+
+    assert found == {"fixed-tmp-path"}
+
+
+def test_matched_lists_the_index_of_every_finding_that_hit_a_plant_or_decoy():
+    k = key([plant("a", "tests/x.py::t")], decoys=[{"id": "d", "test": "tests/d.py"}])
+    doc = {"findings": [finding("tests/z.py", "q"), finding("tests/x.py", "t"), finding("tests/d.py", "u"),
+                        finding("tests/x.py", "t", tier="P1")]}
+
+    report = grade.grade(doc, k, "slice")
+
+    assert report["plants"]["a"]["matched"] == [1, 3]
+    assert report["decoys"]["d"]["matched"] == [2]
+
+
+def test_in_slice_finding_citing_a_lint_rule_does_not_hit_lint_config_missing():
+    found = hit_ids([finding("tests/test_lines.py", "test_line_total", "P1", "Lintable by Ruff PT011",
+                             "pytest.raises(Exception) is flagged by Ruff PT011")])
+
+    assert "lint-config-missing" not in found
+
+
+def test_repo_level_finding_about_missing_lint_config_hits_lint_config_missing():
+    found = hit_ids([finding("pyproject.toml", None, "P1", "No lint config",
+                             "There is no Ruff config; enable PT011, B015 and SLF001 for tests")])
+
+    assert found == {"lint-config-missing"}
+
+
+def test_git_history_mention_in_an_in_slice_finding_does_not_hit_refactor_commit():
+    found = hit_ids([finding("tests/test_tax.py", "test_progressive_tax", "P1", "Weak assertion",
+                             "git history shows this was imported before the slice")], "whole_suite")
+
+    assert "refactor-commit-edited-tests" not in found
+
+
+def test_repo_finding_that_merely_says_git_history_does_not_hit_refactor_commit():
+    found = hit_ids([finding("git history", None, "P3", "History",
+                             "git history shows many small commits")], "whole_suite")
+
+    assert "refactor-commit-edited-tests" not in found
+
+
+def test_repo_finding_naming_the_refactor_commit_hits_it():
+    found = hit_ids([finding("git history", None, "P1", "Tests edited by a refactor",
+                             "The Refactor: rename rounding helper for clarity commit had to edit tests")],
+                    "whole_suite")
+
+    assert found == {"refactor-commit-edited-tests"}
+
+
+@pytest.mark.parametrize("name", ["test_subtract", "test_add", "test_divide", "test_power"])
+def test_calc_degenerate_operands_is_hit_by_any_of_its_tests(name):
+    found = hit_ids([finding("tests/test_calculator.py", name, "P0", "Degenerate operands",
+                             "Operands 0 and 1 cannot distinguish the operations")], "whole_suite")
+
+    assert found == {"calc-degenerate-operands"}
+
+
+@pytest.mark.parametrize("name", ["test_CALC_231_add_returns_result", "test_result_is_numeric"])
+def test_calc_tautology_is_hit_by_either_of_its_tests(name):
+    found = hit_ids([finding("tests/test_calculator.py", name, "P0", "Tautology",
+                             "Asserts result is not None, which any return value satisfies")], "whole_suite")
+
+    assert found == {"calc-tautology"}
+
+
+@pytest.mark.parametrize("file", ["billing/reports.py", "tests/test_report_totals.py"])
+def test_architecture_report_aggregation_is_accepted_on_production_or_test_file(file):
+    found = hit_ids([finding(file, None, "ARCH", "Hidden aggregation",
+                             "_aggregate is private and build_report rounds to whole units")])
+
+    assert found == {"architecture-report-aggregation"}
+
+
+@pytest.mark.parametrize("file", ["billing/__init__.py", "billing/discounts.py"])
+def test_test_only_export_is_accepted_on_production_placement(file):
+    found = hit_ids([finding(file, None, "P1", "Test-only export",
+                             "tier_name is added to __all__ but only tests call it")])
+
+    assert found == {"test-only-export"}
+
+
+def test_legitimate_cleanup_in_a_decoy_file_is_not_a_false_positive():
+    findings = [finding("tests/test_invoice.py", "test_totals", "P3", "Naming", "rename the local variable"),
+                finding("tests/test_tax.py", None, "P3", "Style", "use parametrize for the bracket table")]
+
+    decoys = grade.grade({"findings": findings}, REAL_KEY, "slice")["decoys"]
+
+    assert not decoys["sociable-invoice"]["false_positive"]
+    assert not decoys["complex-pure-algorithm"]["false_positive"]
+
+
+def test_wrong_accusation_against_a_decoy_file_is_a_false_positive():
+    decoys = grade.grade({"findings": [finding("tests/test_tax.py", "test_progressive_tax", "P2", "Direct test of helper",
+                                              "progressive_tax is an in-package helper; test through price_invoice")]},
+                         REAL_KEY, "slice")["decoys"]
+
+    assert decoys["complex-pure-algorithm"]["false_positive"]
+
+
+@pytest.mark.parametrize("file", ["./tests/test_discounts.py", "/work/ledgerly/tests/test_discounts.py",
+                                  "tests/test_discounts.py:21", "tests\\test_discounts.py"])
+def test_file_paths_are_normalised(file):
+    found = hit_ids([finding(file, "test_every_bulk_order_is_discounted", "P0", "Vacuous loop", "never runs")])
+
+    assert found == {"vacuous-loop"}
+
+
+@pytest.mark.parametrize("name", ["test_every_bulk_order_is_discounted()",
+                                  "tests/test_discounts.py::test_every_bulk_order_is_discounted",
+                                  "TestDiscounts::test_every_bulk_order_is_discounted",
+                                  "test_every_bulk_order_is_discounted[5000]"])
+def test_test_names_are_normalised(name):
+    found = hit_ids([finding(DISCOUNTS, name, "P0", "Vacuous loop", "never runs")])
+
+    assert found == {"vacuous-loop"}
+
+
+def test_a_different_absolute_prefix_directory_name_does_not_fake_a_match():
+    found = hit_ids([finding("/work/xtests/test_discounts.py", "test_every_bulk_order_is_discounted",
+                             "P0", "Vacuous loop", "never runs")])
+
+    assert found == set()
+
+
+def own_target_finding(entry):
+    test = entry.get("test", "")
+    category = entry.get("category") or entry["match_keywords"][0]
+    if test == "repo" or test.startswith("git:"):
+        return finding("git history" if test.startswith("git:") else "pyproject.toml", None, "P1", category, category)
+    nodeid = entry["tests"][0] if "tests" in entry else test
+    path, _, name = nodeid.partition("::")
+    return finding(path, name or None, "P1", category, category)
+
+
+@pytest.mark.parametrize("entry", REAL_KEY["plants"], ids=lambda e: e["id"])
+def test_a_plants_own_category_at_its_own_target_hits_exactly_that_plant(entry):
+    doc = {"findings": [own_target_finding(entry)]}
+
+    report = grade.grade(doc, REAL_KEY, "whole_suite")
+
+    hits = {pid for pid, p in report["plants"].items() if p["hit"]}
+    false_positives = {did for did, d in report["decoys"].items() if d["false_positive"]}
+    assert (hits, false_positives) == ({entry["id"]}, set())
+
+
+@pytest.mark.parametrize("entry", REAL_KEY["decoys"], ids=lambda e: e["id"])
+def test_a_decoys_accusation_at_its_target_hits_exactly_that_decoy(entry):
+    keyword = entry["match_keywords"][0]
+    path = entry["test"].partition("::")[0]
+    doc = {"findings": [finding(path, entry["test"].partition("::")[2] or None, "P1", keyword, keyword)]}
+
+    report = grade.grade(doc, REAL_KEY, "whole_suite")
+
+    hits = {pid for pid, p in report["plants"].items() if p["hit"]}
+    false_positives = {did for did, d in report["decoys"].items() if d["false_positive"]}
+    assert (hits, false_positives) == (set(), {entry["id"]})
+
+
+def test_a_finding_that_names_a_test_never_feeds_a_repo_wide_plant_even_on_matching_keywords():
+    found = hit_ids([finding("tests/test_tax.py", "test_progressive_tax", "P1", "Weak assertion",
+                             "There is no Ruff config here; enable lint rules and a refactor commit would show it")])
+
+    assert found == set()

@@ -1,21 +1,54 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
-  "required": ["findings"],
+  "required": [
+    "findings"
+  ],
   "additionalProperties": false,
   "properties": {
     "findings": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["file", "test", "tier", "category", "summary"],
+        "required": [
+          "file",
+          "test",
+          "tier",
+          "category",
+          "summary"
+        ],
         "additionalProperties": false,
         "properties": {
-          "file": {"type": "string"},
-          "test": {"type": ["string", "null"]},
-          "tier": {"enum": ["P0", "P1", "P2", "P3", "ARCH", "OBSERVED"]},
-          "category": {"type": "string"},
-          "summary": {"type": "string"}
+          "file": {
+            "type": "string",
+            "description": "Repo-relative path, e.g. tests/test_x.py. No leading ./, absolute path or line number. A short label such as 'git history' for history-level findings."
+          },
+          "test": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Bare test function name, e.g. test_x (no (), no file:: prefix, no [param] suffix), or null for a file-level or repo-level finding."
+          },
+          "tier": {
+            "enum": [
+              "P0",
+              "P1",
+              "P2",
+              "P3",
+              "ARCH",
+              "OBSERVED"
+            ],
+            "description": "Severity tier."
+          },
+          "category": {
+            "type": "string",
+            "description": "Short name of the defect class."
+          },
+          "summary": {
+            "type": "string",
+            "description": "Why it is a defect. One finding per defect; defects only, no positive notes."
+          }
         }
       }
     }
