@@ -114,10 +114,14 @@ def _placement_match(entry, finding):
     return on_placement and "match_keywords" in entry and _keywords_ok(entry, finding)
 
 
+def _anchored(entry, finding):
+    on_anchor_file = any(_same_path(finding["file"].lower(), anchor.lower()) for anchor in entry["files"])
+    return on_anchor_file or any(_as_whole_word(anchor).search(finding["summary"]) for anchor in entry["files"])
+
+
 def _match_level(entry, finding):
     if _is_repo_wide(entry):
-        anchored = any(_same_path(finding["file"].lower(), anchor.lower()) for anchor in entry["files"])
-        repo_hit = finding["test"] is None and anchored and _mentions_any(entry["match_keywords"], finding)
+        repo_hit = finding["test"] is None and _anchored(entry, finding) and _mentions_any(entry["match_keywords"], finding)
         return REPO_LEVEL if repo_hit else None
     if "::" in _nodeids(entry)[0]:
         if _test_level_match(entry, finding):
