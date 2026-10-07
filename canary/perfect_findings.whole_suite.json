@@ -1,0 +1,207 @@
+{
+  "findings": [
+    {
+      "file": "tests/test_invoice_lines.py",
+      "test": "test_fractional_unit_prices_are_summed_before_rounding",
+      "tier": "P0",
+      "category": "pasted expected value pins a per-line rounding bug against SPEC.md",
+      "summary": "pasted expected value pins a per-line rounding bug against SPEC.md"
+    },
+    {
+      "file": "tests/test_discounts.py",
+      "test": "test_every_bulk_order_is_discounted",
+      "tier": "P0",
+      "category": "assertion inside a loop over an empty collection",
+      "summary": "assertion inside a loop over an empty collection"
+    },
+    {
+      "file": "tests/test_discounts.py",
+      "test": null,
+      "tier": "P0",
+      "category": "tier thresholds 500/1000 never tested at the boundary",
+      "summary": "tier thresholds 500/1000 never tested at the boundary (boundary)"
+    },
+    {
+      "file": "tests/test_invoice_lines.py",
+      "test": "test_negative_quantity_is_rejected",
+      "tier": "P1",
+      "category": "pytest.raises(Exception) with no match (lintable: Ruff PT011)",
+      "summary": "pytest.raises(Exception) with no match (lintable: Ruff PT011)"
+    },
+    {
+      "file": "tests/test_export.py",
+      "test": "test_export_writes_header",
+      "tier": "P0",
+      "category": "bare comparison without assert (lintable: Ruff B015)",
+      "summary": "bare comparison without assert (lintable: Ruff B015)"
+    },
+    {
+      "file": "tests/test_export.py",
+      "test": "test_export_writes_header",
+      "tier": "P1",
+      "category": "time.sleep in test (regression: current prompt catches)",
+      "summary": "time.sleep in test (regression: current prompt catches)"
+    },
+    {
+      "file": "tests/test_export.py",
+      "test": null,
+      "tier": "P1",
+      "category": "non-hermetic: fixed /tmp path collides under parallel runs",
+      "summary": "non-hermetic: fixed /tmp path collides under parallel runs (/tmp)"
+    },
+    {
+      "file": "tests/test_invoice_lines.py",
+      "test": "test_invoice_total_is_never_negative",
+      "tier": "P1",
+      "category": "non-hermetic: unseeded randomness, weak >= 0 assertion",
+      "summary": "non-hermetic: unseeded randomness, weak >= 0 assertion"
+    },
+    {
+      "file": "tests/test_invoice_lines.py",
+      "test": "test_line_stores_its_fields",
+      "tier": "P1",
+      "category": "tests the dataclass machinery, not our behaviour",
+      "summary": "tests the dataclass machinery, not our behaviour"
+    },
+    {
+      "file": "tests/test_convert.py",
+      "test": "test_convert_keeps_amounts_at_parity",
+      "tier": "P0",
+      "category": "rate 1.0 cannot distinguish multiply from divide (regression)",
+      "summary": "rate 1.0 cannot distinguish multiply from divide (regression)"
+    },
+    {
+      "file": "tests/test_convert.py",
+      "test": "test_converted_invoice_is_returned",
+      "tier": "P0",
+      "category": "is not None tautology (regression)",
+      "summary": "is not None tautology (regression)"
+    },
+    {
+      "file": "tests/test_discounts.py",
+      "test": "test_tier_lookup_returns_name_and_rate",
+      "tier": "P1",
+      "category": "prose docstring on a test (regression)",
+      "summary": "prose docstring on a test (regression)"
+    },
+    {
+      "file": "tests/test_discounts.py",
+      "test": "test_tier_lookup_returns_name_and_rate",
+      "tier": "P1",
+      "category": "coupling: imports private _tier_for; discount_rate/price_invoice can express it - lift up",
+      "summary": "coupling: imports private _tier_for; discount_rate/price_invoice can express it - lift up"
+    },
+    {
+      "file": "tests/test_discounts.py",
+      "test": "test_tier_name_for_large_order",
+      "tier": "P1",
+      "category": "coupling: tier_name added to billing.__all__ in this slice, only tests call it - re-privatise or justify",
+      "summary": "coupling: tier_name added to billing.__all__ in this slice, only tests call it - re-privatise or justify"
+    },
+    {
+      "file": "tests/test_invoice_discounting.py",
+      "test": "test_price_invoice_asks_for_discount_on_subtotal",
+      "tier": "P1",
+      "category": "coupling: mocks owned in-process discount_rate and asserts the call; redundant with the silver sociable test",
+      "summary": "coupling: mocks owned in-process discount_rate and asserts the call; redundant with the silver sociable test"
+    },
+    {
+      "file": "tests/test_lines.py",
+      "test": null,
+      "tier": "P1",
+      "category": "coupling: direct tests of in-package helper line_total created this slice; only invoice.py calls it",
+      "summary": "coupling: direct tests of in-package helper line_total created this slice; only invoice.py calls it (line_total)"
+    },
+    {
+      "file": "tests/test_report_totals.py",
+      "test": null,
+      "tier": "ARCH",
+      "category": "architecture: build_report (predates slice) renders whole units only, so cent-accurate aggregation is unobservable through it; tests reach _aggregate and patch _format_rows",
+      "summary": "architecture: build_report (predates slice) renders whole units only, so cent-accurate aggregation is unobservable through it; tests reach _aggregate and patch _format_rows (_aggregate)"
+    },
+    {
+      "file": "tests/test_rounding.py",
+      "test": "test_quantize_half_up_quantizes_to_cents",
+      "tier": "P1",
+      "category": "coupling: imports private _quantize_half_up; pre-existing",
+      "summary": "coupling: imports private _quantize_half_up; pre-existing"
+    },
+    {
+      "file": "git history",
+      "test": null,
+      "tier": "P1",
+      "category": "coupling history: a pure-refactor commit had to edit tests",
+      "summary": "coupling history: a pure-refactor commit had to edit tests (refactor commit)"
+    },
+    {
+      "file": "pyproject.toml",
+      "test": null,
+      "tier": "P1",
+      "category": "no lint config enabling test rules (Ruff B015, PT011, PT018, SLF001, PLC2701)",
+      "summary": "no lint config enabling test rules (Ruff B015, PT011, PT018, SLF001, PLC2701) (ruff)"
+    },
+    {
+      "file": "tests/test_calculator.py",
+      "test": "test_subtract",
+      "tier": "P0",
+      "category": "degenerate operands (also test_add, test_divide, test_power)",
+      "summary": "degenerate operands (also test_add, test_divide, test_power)"
+    },
+    {
+      "file": "tests/test_calculator.py",
+      "test": "test_CALC_231_add_returns_result",
+      "tier": "P0",
+      "category": "is not None tautology, external id, docstring (also test_result_is_numeric)",
+      "summary": "is not None tautology, external id, docstring (also test_result_is_numeric)"
+    },
+    {
+      "file": "tests/test_calculator.py",
+      "test": "test_add_is_patched",
+      "tier": "P0",
+      "category": "mocks the function it claims to test",
+      "summary": "mocks the function it claims to test"
+    },
+    {
+      "file": "tests/test_calculator.py",
+      "test": "test_results_log_populated",
+      "tier": "P1",
+      "category": "depends on test_results_recorder running first",
+      "summary": "depends on test_results_recorder running first"
+    },
+    {
+      "file": "tests/test_calculator.py",
+      "test": "test_add_after_delay",
+      "tier": "P1",
+      "category": "time.sleep",
+      "summary": "time.sleep"
+    },
+    {
+      "file": "tests/test_calculator.py",
+      "test": "test_all_basic_ops",
+      "tier": "P1",
+      "category": "unrelated assertions in one test",
+      "summary": "unrelated assertions in one test"
+    },
+    {
+      "file": "tests/test_calculator.py",
+      "test": "test_power_large_exponent",
+      "tier": "P1",
+      "category": "skip without follow-up; commented-out divide-by-zero test",
+      "summary": "skip without follow-up; commented-out divide-by-zero test"
+    },
+    {
+      "file": "tests/test_calculator.py",
+      "test": "test_add_via_subprocess",
+      "tier": "P0",
+      "category": "subprocess in unit suite; asserts only the exit code",
+      "summary": "subprocess in unit suite; asserts only the exit code"
+    },
+    {
+      "file": "tests/test_cli_e2e.py",
+      "test": "test_e2e_div_produces_output",
+      "tier": "P0",
+      "category": "E2E existence/substring/exit-code assertions; arithmetic belongs in unit tests",
+      "summary": "E2E existence/substring/exit-code assertions; arithmetic belongs in unit tests"
+    }
+  ]
+}

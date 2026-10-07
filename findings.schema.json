@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "findings"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "file",
+          "test",
+          "tier",
+          "category",
+          "summary"
+        ],
+        "additionalProperties": true,
+        "description": "Extra keys such as 'line' are ignored by the grader, which logs a WARNING.",
+        "properties": {
+          "file": {
+            "type": "string",
+            "description": "Repo-relative path, e.g. tests/test_x.py. No leading ./, absolute path or line number. A short label such as 'git history' for history-level findings. 'path::test_name' is accepted and read as file plus test when test is null."
+          },
+          "test": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Bare test function name, e.g. test_x (no (), no file:: prefix, no [param] suffix), or null for a file-level or repo-level finding."
+          },
+          "tier": {
+            "enum": [
+              "P0",
+              "P1",
+              "P2",
+              "P3",
+              "ARCH",
+              "OBSERVED"
+            ],
+            "description": "Severity tier."
+          },
+          "category": {
+            "type": "string",
+            "description": "Short name of the defect class."
+          },
+          "summary": {
+            "type": "string",
+            "description": "Why it is a defect. One finding per defect; defects only, no positive notes."
+          }
+        }
+      }
+    }
+  }
+}

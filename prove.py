@@ -9,6 +9,9 @@ ANSWER_KEY = Path(__file__).parent / "answer_key.json"
 COPY_IGNORE = shutil.ignore_patterns(".git", "__pycache__", ".pytest_cache")
 
 
+OUTCOME_BY_EXIT_CODE = {0: "pass", 1: "fail", 2: "fail"}
+
+
 class EditTargetMissing(Exception):
     pass
 
@@ -18,7 +21,7 @@ def pytest_outcome(workdir, target):
         [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", target],
         cwd=workdir, capture_output=True, text=True,
     )
-    return "pass" if completed.returncode == 0 else "fail"
+    return OUTCOME_BY_EXIT_CODE.get(completed.returncode, "error")
 
 
 def apply_edits(workdir, edits):

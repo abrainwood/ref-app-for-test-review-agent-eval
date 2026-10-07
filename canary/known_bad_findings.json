@@ -1,0 +1,53 @@
+{
+  "findings": [
+    {
+      "file": "tests/test_discounts.py",
+      "test": "test_every_bulk_order_is_discounted",
+      "tier": "P3",
+      "category": "style",
+      "summary": "wrong tier: lying test reported as cleanup"
+    },
+    {
+      "file": "tests/test_export.py",
+      "test": "test_export_writes_header",
+      "tier": "P3",
+      "category": "no-op comparison",
+      "summary": "bare comparison is never asserted; wrong tier: reported as cleanup"
+    },
+    {
+      "file": "tests/test_invoice.py",
+      "test": null,
+      "tier": "P1",
+      "category": "too sociable",
+      "summary": "decoy: sociable invoice test flagged"
+    },
+    {
+      "file": "tests/test_tax.py",
+      "test": "test_progressive_tax",
+      "tier": "P2",
+      "category": "direct test of helper",
+      "summary": "decoy: complex pure algorithm flagged"
+    },
+    {
+      "file": "tests/test_rates_client.py",
+      "test": "test_gives_up_after_max_attempts",
+      "tier": "P1",
+      "category": "call count",
+      "summary": "decoy: retry call count flagged"
+    },
+    {
+      "file": "tests/test_unrelated.py",
+      "test": "test_nothing",
+      "tier": "P2",
+      "category": "noise",
+      "summary": "finding on a file that has no defect"
+    },
+    {
+      "file": "tests/test_other.py",
+      "test": null,
+      "tier": "P3",
+      "category": "noise",
+      "summary": "more noise"
+    }
+  ]
+}
