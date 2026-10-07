@@ -33,7 +33,7 @@
       "test": "test_gives_up_after_max_attempts",
       "tier": "P1",
       "category": "call count",
-      "summary": "decoy: retry call count flagged"
+      "summary": "decoy: the retry test asserts the call count and is over-specified"
     },
     {
       "file": "tests/test_unrelated.py",

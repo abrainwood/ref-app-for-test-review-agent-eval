@@ -1,0 +1,270 @@
+{
+  "findings": [
+    {
+      "file": "tests/test_invoice_lines.py",
+      "test": "test_fractional_unit_prices_are_summed_before_rounding",
+      "tier": "P0",
+      "category": "expected-value-pinned-from-code-output",
+      "summary": "The test asserts subtotal == 2.02 for two lines of 3 x 0.335. SPEC.md says amounts are rounded only on the final invoice fields, never per line. In floats 3*0.335 = 1.0050000000000001, two of them sum to 2.0100000000000002, and that rounds half-up to 2.01. The value 2.02 only comes out if each line is rounded to 1.01 first, which is what the new billing/lines.py line_total does. The test's name claims 'summed before rounding' while it asserts the result of rounding first. It locks in a spec violation in price_invoice. Fix: expect 2.01, worked out from SPEC. The test will then fail until line_total stops rounding."
+    },
+    {
+      "file": "tests/test_export.py",
+      "test": "test_export_writes_header",
+      "tier": "P0",
+      "category": "assertion-that-cannot-fail",
+      "summary": "`rows[0] == [\"customer\", ...]` is a bare comparison with no `assert`. Its result is thrown away, so the test passes whatever header is written, or none at all (the only thing that can fail it is read_rows raising). Ruff B015 flags this. Add the `assert`."
+    },
+    {
+      "file": "tests/test_export.py",
+      "test": "test_export_writes_one_row_per_invoice",
+      "tier": "P0",
+      "category": "non-hermetic-shared-file",
+      "summary": "Both export tests write to and read from the fixed path /tmp/ledgerly_invoices.csv, and the file survives between runs. After this review's run it held exactly the header plus the 'acme,45.00,0.00,0.00,45.00,2026-02-14' row this test expects. If export_csv became a no-op, or wrote somewhere else, read_rows would return the previous run's file and the test would still pass on any machine that has run the suite before. The fixed path also collides under parallel runs (pytest-xdist, two checkouts). Fix: use pytest's tmp_path fixture for a separate file per test."
+    },
+    {
+      "file": "tests/test_discounts.py",
+      "test": "test_every_bulk_order_is_discounted",
+      "tier": "P0",
+      "category": "vacuous-iteration",
+      "summary": "BULK_THRESHOLD = 5000 is above every value in SAMPLE_SUBTOTALS (the largest is 2400), so the filtered list is always empty and the loop never runs its assert. The test passes even if discount_rate returned 0 for every subtotal. 5000 is not a discount threshold either (the tiers are 500 and 1000); it is the top tax bracket. Delete the test; the threshold-boundary tests in the tests/test_discounts.py finding replace it."
+    },
+    {
+      "file": "tests/test_convert.py",
+      "test": "test_convert_keeps_amounts_at_parity",
+      "tier": "P0",
+      "category": "degenerate-input",
+      "summary": "A rate of 1.0 leaves every amount unchanged when multiplied, so this test cannot tell whether convert_invoice multiplies by the rate, divides by it, ignores it, or returns the invoice untouched. It also checks only total. No test in the change checks any converted amount at a rate other than 1, so the conversion maths and the per-field round_currency are untested. An implementation of `rates.rate(currency); return invoice` passes all four convert tests. Fix: build an Invoice with distinct amounts, convert at a rate such as 0.5 or 0.333 where rounding matters, and assert subtotal, discount, tax and total against values worked out by hand."
+    },
+    {
+      "file": "tests/test_convert.py",
+      "test": "test_converted_invoice_is_returned",
+      "tier": "P1",
+      "category": "tautological-assertion",
+      "summary": "`assert convert_invoice(...) is not None` passes for any return value, including the original, unconverted invoice. The name claims a converted invoice comes back; the assertion cannot check that. Delete it once the parity test asserts real converted amounts."
+    },
+    {
+      "file": "tests/test_discounts.py",
+      "test": null,
+      "tier": "P1",
+      "category": "missing-boundary",
+      "summary": "SPEC.md says 'a subtotal exactly on a tier threshold gets that tier', but no test exercises 500 or 1000. The inputs (200, 750, 2000) and the price_invoice tests (45, 600, 1200, 6000) all sit well inside their tiers. Changing `>=` to `>` in _tier_for therefore passes the whole suite (found by reasoning; no mutation tool was run). Add one parametrized test at the interface: discount_rate(499.99)==0.0, (500)==0.05, (999.99)==0.05, (1000)==0.10."
+    },
+    {
+      "file": "tests/test_invoice_discounting.py",
+      "test": "test_price_invoice_asks_for_discount_on_subtotal",
+      "tier": "P1",
+      "category": "mock-of-own-code",
+      "summary": "The test patches our own in-process function billing.invoice.discount_rate and asserts assert_called_once_with(600.0). That pins today's call graph, not behaviour: inlining, renaming or batching the tier lookup breaks it while pricing stays correct. test_mid_size_order_gets_silver_discount in the same file already proves the behaviour (discount 30.0 on a 600 subtotal). Scope: tests only. Delete this test."
+    },
+    {
+      "file": "tests/test_report_totals.py",
+      "test": "test_report_aggregates_before_formatting",
+      "tier": "P1",
+      "category": "mock-of-own-code",
+      "summary": "The test patches the private reports._format_rows and asserts it was called with the aggregated dict. That only proves build_report calls its two private helpers in today's order; merging or reordering them breaks the test without changing any output. It adds nothing the _aggregate test does not already cover. Scope: tests only. Delete it."
+    },
+    {
+      "file": "tests/test_export.py",
+      "test": "test_export_writes_header",
+      "tier": "P1",
+      "category": "sleep-in-test",
+      "summary": "time.sleep(0.2) runs after a synchronous export_csv that has already closed the file, so it waits for nothing. It adds 0.2s to every run and is the second-slowest test in the suite. Remove it."
+    },
+    {
+      "file": "tests/test_export.py",
+      "test": "test_export_writes_one_row_per_invoice",
+      "tier": "P1",
+      "category": "degenerate-input",
+      "summary": "The invoice comes from price_invoice('acme', [Line('bolt', 10, 4.5)]), so subtotal == total == 45.00 and discount == tax == 0.00. An export that swaps the subtotal/total columns or the discount/tax columns still matches the expected row. Build an Invoice directly with distinct amounts, e.g. Invoice('acme', 1200.0, 120.0, 8.0, 1088.0, date(2026, 2, 14)). That also stops the export test depending on pricing rules."
+    },
+    {
+      "file": "tests/test_invoice_lines.py",
+      "test": "test_negative_quantity_is_rejected",
+      "tier": "P1",
+      "category": "over-broad-exception-assertion",
+      "summary": "pytest.raises(Exception) with no `match` passes on any exception, including a TypeError from a broken Line constructor. Use pytest.raises(ValueError, match='quantity must not be negative'). Ruff PT011 flags this."
+    },
+    {
+      "file": "tests/test_invoice_lines.py",
+      "test": "test_negative_quantity_is_rejected",
+      "tier": "P1",
+      "category": "missing-boundary",
+      "summary": "Only -1 is tested. Nothing pins that quantity 0 is accepted, which the error message ('must not be negative') implies. Changing `< 0` to `<= 0` in Line.__post_init__ passes every fixed test; only the unseeded random test catches it, and only when it happens to draw a 0. Add Line('bolt', 0, 0.5) as an accepted case next to the -1 rejection."
+    },
+    {
+      "file": "tests/test_invoice_lines.py",
+      "test": "test_invoice_total_is_never_negative",
+      "tier": "P1",
+      "category": "non-hermetic-randomness",
+      "summary": "The test uses unseeded random.randint and random.uniform, so each run prices a different invoice and a failure cannot be reproduced. The assertion is also weak: with only non-negative inputs, `total >= 0` holds for a price_invoice that always returns 0. Either delete it, or use Hypothesis with a seed and a real property such as total == round(subtotal - discount + tax, 2) and discount == round(subtotal * discount_rate(subtotal), 2)."
+    },
+    {
+      "file": "tests/test_rates_client.py",
+      "test": "test_returns_rate_from_response",
+      "tier": "P1",
+      "category": "outbound-request-unasserted",
+      "summary": "ScriptedOpener ignores its url and timeout arguments, so no test checks that rate('EUR') requests f'{BASE_URL}/rates/EUR' with timeout=REQUEST_TIMEOUT_SECONDS. A client that fetches the wrong path or base URL, or passes timeout=None (no timeout at all), passes every success-path test. The URL is checked only indirectly, through the warning text on the exhausted-retries path. Record (url, timeout) per call in ScriptedOpener and assert them here."
+    },
+    {
+      "file": "tests/test_rates_client.py",
+      "test": "test_gives_up_after_max_attempts",
+      "tier": "P1",
+      "category": "missing-boundary",
+      "summary": "No test asserts that the client does not sleep after its final failed attempt. Every test that exhausts the retries throws the recorded sleeps away. Changing `attempt < self._max_attempts` to `<=`, or removing the guard, passes the suite (found by reasoning) and adds a needless backoff delay before RateUnavailable. Pass a sleeps list here and assert sleeps == [0.5, 1.0]."
+    },
+    {
+      "file": "tests/test_rates_client.py",
+      "test": null,
+      "tier": "P1",
+      "category": "missing-failure-path",
+      "summary": "Only HTTPError failures are scripted. Timeouts and connection failures (urllib.error.URLError, TimeoutError) and malformed bodies (no 'rate' key, invalid JSON) are untested. The client does not handle them either: they escape as URLError/TimeoutError/KeyError/JSONDecodeError instead of RateUnavailable, with no retry and no WARNING log, so callers of convert_invoice that catch RateUnavailable crash. Add a test for a timeout and one for a malformed body. Both will fail and drive the production fix."
+    },
+    {
+      "file": "lint config",
+      "test": null,
+      "tier": "P1",
+      "category": "lint-gap",
+      "summary": "The repo has no Ruff/flake8 configuration (no pyproject.toml, setup.cfg or ruff.toml). Ruff rules would have caught several findings mechanically: B015 (the bare comparison in test_export_writes_header), PT011 (pytest.raises(Exception)), and SLF001 / PLC2701 (PLC2701 is preview-only), which flag tests reaching private names. Private-name access now appears three times: _tier_for and reports._aggregate/_format_rows in this change, and _quantize_half_up before it. A coupling problem that keeps recurring is a tooling gap. Add a Ruff config for tests/ with B, PT and SLF selected."
+    },
+    {
+      "file": "tests/test_discounts.py",
+      "test": "test_tier_lookup_returns_name_and_rate",
+      "tier": "P2",
+      "category": "private-surface-lift-up",
+      "summary": "The test imports the private _tier_for, which this change created. The public interface (tier_name, exported from billing, plus discount_rate) can express the same behaviour. The silver and standard tier names are currently tested only through this private helper; the only tier_name test covers gold. Lift-up, tests only, no production change: add tier_name(750) == 'silver' and tier_name(200) == 'standard', check they would fail if those names were broken, then delete this test (silver's rate is already covered by test_mid_order_gets_silver_rate)."
+    },
+    {
+      "file": "tests/test_lines.py",
+      "test": null,
+      "tier": "P2",
+      "category": "in-package-helper-lift-up",
+      "summary": "Both tests call line_total directly. It is an internal helper added in this change, and its only caller is price_invoice in billing/invoice.py. The interface, price_invoice, already covers line arithmetic: test_subtotal_sums_all_lines (2x3.0 + 5x1.25 = 12.25) fails if multiplication becomes addition. These tests also tie the suite to the helper that causes the SPEC rounding bug: removing the per-line rounding, or inlining line_total, would break them even though behaviour improves. Tests only: confirm the price_invoice tests fail on the same deliberate bugs, then delete both (2 tests)."
+    },
+    {
+      "file": "tests/test_report_totals.py",
+      "test": "test_aggregate_sums_cents_without_float_drift",
+      "tier": "ARCH",
+      "category": "interface-cannot-express-behaviour",
+      "summary": "Behaviour: each customer's total is summed exactly in cents (the 'cent-accurate report totals' in this change). Interface: billing.build_report, which predates the change. Why it can't be tested there: build_report formats each total to whole units ('.0f') before returning, so cent-level drift never reaches the output except where it tips a .5 boundary. SPEC.md gives no rounding rule for whole units there, and Python's default half-even format rounding differs from the half-up rule used for invoice fields. So the test reaches into the private reports._aggregate. Deletable once the module offers a way to observe per-customer totals (or SPEC fixes the rounding): test_aggregate_sums_cents_without_float_drift and test_report_aggregates_before_formatting."
+    },
+    {
+      "file": "tests/test_discounts.py",
+      "test": "test_tier_lookup_returns_name_and_rate",
+      "tier": "P3",
+      "category": "docstring-prose",
+      "summary": "The two-line docstring explains what the test name should already say. Rename the test after the behaviour (e.g. test_mid_order_qualifies_for_silver_tier) and delete the docstring. This test is also being replaced by the lift-up finding above."
+    },
+    {
+      "file": "tests/test_invoice_lines.py",
+      "test": "test_line_stores_its_fields",
+      "tier": "P3",
+      "category": "coverage-padding",
+      "summary": "The test checks that a @dataclass stores its constructor arguments. That tests the standard library, not our code, and it cannot fail unless dataclasses are broken. Delete it."
+    },
+    {
+      "file": "tests/test_invoice_lines.py",
+      "test": "test_due_date_rolls_over_year_end",
+      "tier": "P3",
+      "category": "duplicate",
+      "summary": "It runs the same code path (issued_on + PAYMENT_TERMS) as the existing test_payment_is_due_thirty_days_after_issue. Year rollover is handled by datetime.date, not our code, so it adds no coverage of our behaviour. Delete it."
+    },
+    {
+      "file": "tests/test_lines.py",
+      "test": "test_line_total_for_single_item",
+      "tier": "P3",
+      "category": "degenerate-input",
+      "summary": "With quantity 1, a line_total that returns unit_price and ignores quantity also gives 0.4, so this test cannot detect the multiplication being wrong. It adds nothing over test_line_total_multiplies_quantity_by_price. It goes away with the test_lines.py lift-up."
+    },
+    {
+      "file": "tests/test_rates_client.py",
+      "test": "test_exhausted_retries_log_a_warning_with_status_and_url",
+      "tier": "P3",
+      "category": "opaque-assertion",
+      "summary": "The assertion turns each log record into a tuple of booleans, so a failure shows only something like [(30, False, True)] and never the actual message. Assert len(caplog.records) == 1, then the record's levelno, then substring checks on record.getMessage(), so pytest shows the real text when it fails."
+    },
+    {
+      "file": "tests/test_calculator.py",
+      "test": "test_results_log_populated",
+      "tier": "OBSERVED",
+      "category": "order-dependent",
+      "summary": "It depends on test_results_recorder having appended to the module-level RESULTS list first. Run alone, or in random order, it fails; and `len(RESULTS) > 0` checks no actual value."
+    },
+    {
+      "file": "tests/test_calculator.py",
+      "test": "test_add_is_patched",
+      "tier": "OBSERVED",
+      "category": "tests-the-mock",
+      "summary": "It patches calculator.add and then asserts that the mock returns 99 and was called. The real add never runs, so the test passes whatever add does."
+    },
+    {
+      "file": "tests/test_calculator.py",
+      "test": "test_CALC_231_add_returns_result",
+      "tier": "OBSERVED",
+      "category": "tautological-assertion",
+      "summary": "`assert result is not None` passes for any return value. The ticket id CALC-231 in the name and docstring tells a reader nothing about the behaviour being tested."
+    },
+    {
+      "file": "tests/test_calculator.py",
+      "test": "test_power_large_exponent",
+      "tier": "OBSERVED",
+      "category": "skip-without-follow-up",
+      "summary": "It is skipped as 'flaky on CI' with no linked issue or removal date, yet power(2, 10) is deterministic. The only power test left running, test_power (5**1), uses an exponent of 1 and so cannot tell power from multiplication."
+    },
+    {
+      "file": "tests/test_calculator.py",
+      "test": null,
+      "tier": "OBSERVED",
+      "category": "commented-out-test",
+      "summary": "test_divide_by_zero is commented out. divide's ValueError path has no active unit test, even though the CLI depends on it for exit code 1. Restore the test (it would pass) or delete it."
+    },
+    {
+      "file": "tests/test_calculator.py",
+      "test": "test_add_after_delay",
+      "tier": "OBSERVED",
+      "category": "sleep-in-test",
+      "summary": "time.sleep(0.4) waits for nothing, and this is the slowest test in the suite."
+    },
+    {
+      "file": "tests/test_calculator.py",
+      "test": "test_add_via_subprocess",
+      "tier": "OBSERVED",
+      "category": "integration-in-unit-suite",
+      "summary": "It starts a Python subprocess from the unit test file but asserts only returncode == 0, never that it printed 5. An in-process call to add would test more, faster."
+    },
+    {
+      "file": "tests/test_calculator.py",
+      "test": "test_subtract",
+      "tier": "OBSERVED",
+      "category": "degenerate-input",
+      "summary": "subtract(0, 0) == 0 also holds for add, multiply or returning a constant 0, so the test cannot detect a wrong operator."
+    },
+    {
+      "file": "tests/test_calculator.py",
+      "test": "test_divide",
+      "tier": "OBSERVED",
+      "category": "degenerate-input",
+      "summary": "divide(0, 5) == 0 also holds for multiply or a % b, so the test cannot detect a wrong operator."
+    },
+    {
+      "file": "tests/test_calculator.py",
+      "test": "test_add",
+      "tier": "OBSERVED",
+      "category": "degenerate-input",
+      "summary": "add(2, 2) == 4 also holds for multiply and power, so the test cannot detect a wrong operator."
+    },
+    {
+      "file": "tests/test_rounding.py",
+      "test": "test_quantize_half_up_quantizes_to_cents",
+      "tier": "OBSERVED",
+      "category": "structure-coupling",
+      "summary": "It tests the private helper _quantize_half_up. The pure-refactor commit 7ddc122 ('rename rounding helper') had to edit this test, which shows it is tied to the code's structure. The round_currency tests in the same file already cover the behaviour. Delete it."
+    },
+    {
+      "file": "tests/test_cli_e2e.py",
+      "test": "test_e2e_div_produces_output",
+      "tier": "OBSERVED",
+      "category": "weak-assertion",
+      "summary": "`stdout.strip() != \"\"` passes for any output, including an error message or a wrong quotient. The CLI's division path is effectively unchecked end-to-end."
+    }
+  ]
+}

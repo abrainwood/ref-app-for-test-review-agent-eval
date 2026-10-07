@@ -528,15 +528,40 @@ def test_a_file_level_finding_does_not_hit_a_test_level_plant_without_keywords()
 
 TEST_LEVEL_DECOYS = [d for d in REAL_KEY["decoys"] if "::" in d["test"]]
 
+REALISTIC_ACCUSATIONS = {
+    "sociable-silver": "too broad: wrong level for a unit test",
+    "adapter-own-test-fakes-transport": "the client test fakes the transport and should not fake HTTP",
+    "retry-call-count": "the test asserts the call count, which is over-specified",
+    "no-retry-on-client-error": "pins call_count to 1, which is over-specified",
+    "caplog-warning": "the caplog assertion is brittle: log assertions are brittle",
+    "injected-sleep": "the test mocks sleep instead of waiting",
+    "fake-of-own-wrapper": "FakeRates is a mock of our own wrapper",
+    "frozen-clock": "the frozen clock hides real time behaviour",
+}
+
+
+def test_every_test_level_decoy_has_a_realistic_accusation_in_the_positive_tests():
+    assert set(REALISTIC_ACCUSATIONS) == {d["id"] for d in TEST_LEVEL_DECOYS}
+
 
 @pytest.mark.parametrize("decoy", TEST_LEVEL_DECOYS, ids=lambda d: d["id"])
-def test_any_finding_on_a_test_level_decoy_is_a_false_positive_whatever_it_says(decoy):
+def test_a_realistic_accusation_of_a_test_level_decoys_lure_is_a_false_positive(decoy):
     path, _, name = decoy["test"].partition("::")
+    accusation = REALISTIC_ACCUSATIONS[decoy["id"]]
 
-    decoys = grade.grade({"findings": [finding(path, name, "P3", "Anything", "a harmless remark")]},
-                         REAL_KEY, "slice")["decoys"]
+    decoys = grade.grade({"findings": [finding(path, name, "P3", "Style", accusation)]}, REAL_KEY, "slice")["decoys"]
 
     assert decoys[decoy["id"]]["false_positive"] is True
+
+
+@pytest.mark.parametrize("decoy", TEST_LEVEL_DECOYS, ids=lambda d: d["id"])
+def test_a_remark_on_a_test_level_decoy_that_accuses_nothing_is_a_near_miss(decoy):
+    path, _, name = decoy["test"].partition("::")
+
+    report = grade.grade({"findings": [finding(path, name, "P3", "Anything", "a harmless remark")]}, REAL_KEY, "slice")
+
+    assert report["decoys"][decoy["id"]]["false_positive"] is False
+    assert decoy["id"] in report["near_misses"][0]["candidates"]
 
 
 def test_an_unkeyed_finding_on_a_keyed_file_is_a_near_miss_naming_the_candidates():
@@ -576,3 +601,35 @@ def test_a_file_given_as_path_and_test_separated_by_double_colon_names_the_test(
                              "never runs")])
 
     assert found == {"vacuous-loop"}
+
+
+GOLDEN_SLICE = json.loads((Path(__file__).resolve().parent.parent / "canary" / "golden_smoke.slice.json").read_text())["findings"]
+VALID_POINTS_ON_DECOY_TESTS = [14, 15, 23, 25]
+
+
+@pytest.mark.parametrize("index", VALID_POINTS_ON_DECOY_TESTS)
+def test_an_unrelated_valid_point_on_a_decoy_test_is_a_near_miss_not_a_false_positive(index):
+    report = grade.grade({"findings": [GOLDEN_SLICE[index]]}, REAL_KEY, "slice")
+
+    assert report["summary"]["false_positives"] == 0
+    assert [m["index"] for m in report["near_misses"]] == [0]
+
+
+def test_a_repo_wide_finding_with_the_anchor_term_in_its_summary_hits_when_the_file_is_a_label():
+    found = hit_ids([finding("lint config", None, "P1", "lint-gap",
+                             "no pyproject.toml, setup.cfg or ruff.toml; Ruff would catch B015")])
+
+    assert found == {"lint-config-missing"}
+
+
+def test_a_ruff_mention_in_a_test_level_finding_still_does_not_hit_the_repo_wide_plant():
+    found = hit_ids([finding("lint config", "test_x", "P1", "lint-gap",
+                             "no pyproject.toml, setup.cfg or ruff.toml; Ruff would catch B015")])
+
+    assert "lint-config-missing" not in found
+
+
+def test_a_label_file_without_an_anchor_term_in_the_summary_does_not_hit_the_repo_wide_plant():
+    found = hit_ids([finding("lint config", None, "P1", "Tooling", "Ruff is not configured")])
+
+    assert "lint-config-missing" not in found
