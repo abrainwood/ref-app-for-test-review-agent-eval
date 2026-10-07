@@ -24,7 +24,7 @@ Any agent, any harness:
 2. Take the section of `task_prompt.md` for the mode (`## Mode: slice` or `## Mode: whole_suite`) and fill the placeholders: `{base_ref}` (slice only - the commit titled `slice_base_subject`), `{schema_path}` (path to `findings.schema.json`, copied somewhere readable), `{findings_path}` (where the agent must write its JSON).
 3. Run the reviewer on the fixture checkout and collect the findings JSON, shaped like `findings.schema.json`.
 4. Grade it, after the run: `python3 grade.py findings.json --mode slice|whole_suite` prints a JSON report (per plant `hit`/`tier_ok`/`tiers_seen`, per decoy `false_positive`, `unkeyed`, `known_noise_count`, `summary`).
-5. Aggregate repeated runs of one arm: `python3 summarise.py report1.json report2.json ...` prints per-plant hit and tier-ok rates, per-decoy false-positive rates and unkeyed counts. Compare arms yourself.
+5. Aggregate repeated runs of one arm: `python3 summarise.py report1.json report2.json ...` prints per-plant hit and tier-ok rates, per-decoy false-positive rates, and unkeyed and near-miss counts per run. Compare arms yourself.
 
 Matching rules (`grade.py`):
 

@@ -8,12 +8,13 @@ import pytest
 import summarise
 
 
-def report(plants, decoys=None, unkeyed=0, known_noise=0, mode="slice"):
+def report(plants, decoys=None, unkeyed=0, known_noise=0, mode="slice", near_misses=0):
     return {
         "mode": mode,
         "plants": {pid: {"hit": hit, "tier_ok": ok, "tiers_seen": []} for pid, (hit, ok) in plants.items()},
         "decoys": {did: {"false_positive": fp} for did, fp in (decoys or {}).items()},
         "unkeyed": [{}] * unkeyed,
+        "near_misses": [{}] * near_misses,
         "known_noise_count": known_noise,
     }
 
@@ -36,6 +37,12 @@ def test_decoy_false_positive_rate_and_unkeyed_counts():
     assert summary["unkeyed"] == {"per_run": [3, 1], "mean": 2.0}
     assert summary["known_noise"] == {"per_run": [1, 0], "mean": 0.5}
     assert summary["runs"] == 2
+
+
+def test_near_misses_are_counted_per_run_with_a_mean():
+    reports = [report({}, unkeyed=4, near_misses=3), report({}, unkeyed=1, near_misses=0)]
+
+    assert summarise.summarise(reports)["near_misses"] == {"per_run": [3, 0], "mean": 1.5}
 
 
 def write_reports(tmp_path, reports):

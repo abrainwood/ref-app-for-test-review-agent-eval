@@ -43,6 +43,7 @@ def summarise(reports):
             for did in decoy_ids
         },
         "unkeyed": _count_stats([len(r["unkeyed"]) for r in reports]),
+        "near_misses": _count_stats([len(r["near_misses"]) for r in reports]),
         "known_noise": _count_stats([r["known_noise_count"] for r in reports]),
     }
 
