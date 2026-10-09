@@ -5,3 +5,4 @@
 - Tax is progressive over the discounted subtotal: 0% up to 1000, 10% from 1000 to 5000, 20% above 5000.
 - Payment is due 30 days after the issue date.
 - The monthly report lists each customer's total across their invoices, one row per customer, sorted by name, in whole currency units.
+- Looking up a customer's details is expensive, so the monthly report resolves each customer's details once per report, however many invoices that customer has.
