@@ -17,3 +17,12 @@ def test_pytest_exit_codes_other_than_pass_and_fail_are_errors_not_fails(tmp_pat
     (tmp_path / "test_a.py").write_text(body)
 
     assert prove.pytest_outcome(tmp_path, target) == outcome
+
+
+@pytest.mark.parametrize("proof, expected", [
+    (None, []),
+    ({"kind": "mutation"}, [{"kind": "mutation"}]),
+    ([{"kind": "mutation"}, {"kind": "refactor"}], [{"kind": "mutation"}, {"kind": "refactor"}]),
+])
+def test_an_entry_proof_may_be_absent_one_or_several(proof, expected):
+    assert prove.proofs_of({"proof": proof}) == expected

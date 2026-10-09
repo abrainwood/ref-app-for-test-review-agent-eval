@@ -334,12 +334,12 @@ def test_calc_tautology_is_hit_by_either_of_its_tests(name):
     assert found == {"calc-tautology"}
 
 
-@pytest.mark.parametrize("file", ["billing/reports.py", "tests/test_report_totals.py"])
-def test_architecture_report_aggregation_is_accepted_on_production_or_test_file(file):
-    found = hit_ids([finding(file, None, "ARCH", "Hidden aggregation",
-                             "_aggregate is private and build_report rounds to whole units")])
+@pytest.mark.parametrize("file", ["billing/reports.py", "tests/test_report_customers.py"])
+def test_architecture_report_customer_lookup_is_accepted_on_production_or_test_file(file):
+    found = hit_ids([finding(file, None, "ARCH", "Hidden lookup",
+                             "_customer_name is hard-wired; inject the lookup so a counting fake can replace it")])
 
-    assert found == {"architecture-report-aggregation"}
+    assert found == {"architecture-report-customer-lookup"}
 
 
 @pytest.mark.parametrize("file", ["billing/__init__.py", "billing/discounts.py"])
@@ -497,25 +497,41 @@ def test_unfailing_assert_phrasings_hit(summary):
     assert found == {"unfailing-assert"}
 
 
-def test_architecture_note_filed_on_the_reports_interface_test_file_hits_the_plant_and_not_the_decoy():
-    findings = [finding("tests/test_reports.py", None, "ARCH", "Hidden aggregation",
-                        "_aggregate is private and build_report rounds to whole units")]
-
-    report = grade.grade({"findings": findings}, REAL_KEY, "slice")
-
-    assert report["plants"]["architecture-report-aggregation"]["hit"] is True
-    assert report["decoys"]["report-interface"]["false_positive"] is False
+LIFT_TO_INTERFACE = ("Coupled to private lookup",
+                     "test patches the private _customer_name; lift it to build_report instead")
+INJECT_THE_LOOKUP = ("Hidden lookup seam",
+                     "build_report cannot express once per customer; inject the lookup so a counting fake works")
 
 
 @pytest.mark.parametrize("mode", ["slice", "whole_suite"])
-@pytest.mark.parametrize("tier", ["P1", "P2", "ARCH"])
-def test_report_aggregation_accepts_lifting_to_build_report_and_the_architecture_note(mode, tier):
-    findings = [finding("tests/test_report_totals.py", None, tier, "Coupled to private aggregation",
-                        "_aggregate is private; cent drift shows through build_report at .5 boundaries, test there")]
+@pytest.mark.parametrize("tier", ["P1", "P2"])
+def test_customer_lookup_coupling_finding_that_says_lift_to_build_report_is_not_tier_ok(mode, tier):
+    category, summary = LIFT_TO_INTERFACE
+    findings = [finding("tests/test_report_customers.py", "test_customer_details_are_resolved_once_per_customer", tier, category, summary)]
 
     report = grade.grade({"findings": findings}, REAL_KEY, mode)
 
-    assert report["plants"]["architecture-report-aggregation"]["tier_ok"] is True
+    assert report["plants"]["architecture-report-customer-lookup"]["hit"] is True
+    assert report["plants"]["architecture-report-customer-lookup"]["tier_ok"] is False
+
+
+@pytest.mark.parametrize("mode", ["slice", "whole_suite"])
+def test_customer_lookup_finding_that_says_inject_the_lookup_is_tier_ok_as_arch(mode):
+    category, summary = INJECT_THE_LOOKUP
+    findings = [finding("billing/reports.py", None, "ARCH", category, summary)]
+
+    report = grade.grade({"findings": findings}, REAL_KEY, mode)
+
+    assert report["plants"]["architecture-report-customer-lookup"]["tier_ok"] is True
+
+
+def test_architecture_note_on_the_reports_interface_test_file_does_not_hit_the_lookup_plant_or_the_decoy():
+    findings = [finding("tests/test_reports.py", None, "ARCH", *INJECT_THE_LOOKUP)]
+
+    report = grade.grade({"findings": findings}, REAL_KEY, "slice")
+
+    assert report["plants"]["architecture-report-customer-lookup"]["hit"] is False
+    assert report["decoys"]["report-interface"]["false_positive"] is False
 
 
 def test_helper_direct_tests_is_hit_by_a_finding_on_the_helpers_production_file():
