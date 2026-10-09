@@ -258,6 +258,55 @@
       "tier": "OBSERVED",
       "category": "structure coupling: asserts identities in the cli.OPS dispatch table, not behaviour",
       "summary": "structure coupling: asserts identities in the cli.OPS dispatch table, not behaviour"
+    },
+    {
+      "file": "tests/test_rates_client.py",
+      "test": "test_gives_up_after_max_attempts",
+      "tier": "P1",
+      "category": "no test pins that the client skips the backoff sleep after the final failed attempt: the exhaustion test discards its sleeps and the backoff test succeeds on its last try",
+      "summary": "no test pins that the client skips the backoff sleep after the final failed attempt: the exhaustion test discards its sleeps and the backoff test succeeds on its last try"
+    },
+    {
+      "file": "tests/test_invoice_lines.py",
+      "test": "test_negative_quantity_is_rejected",
+      "tier": "P1",
+      "category": "boundary: the guard rejects quantity < 0 but only -1 is tested, so quantity 0 is never shown accepted and changing it to <= 0 survives",
+      "summary": "boundary: the guard rejects quantity < 0 but only -1 is tested, so quantity 0 is never shown accepted and changing it to <= 0 survives"
+    },
+    {
+      "file": "tests/test_rates_client.py",
+      "test": null,
+      "tier": "P3",
+      "category": "504 is in RETRYABLE_STATUSES but no test sends it, so dropping it from the retryable set survives",
+      "summary": "504 is in RETRYABLE_STATUSES but no test sends it, so dropping it from the retryable set survives"
+    },
+    {
+      "file": "tests/test_rounding.py",
+      "test": "test_rounds_half_cent_up",
+      "tier": "OBSERVED",
+      "category": "degenerate value: 2.675 also rounds up under banker's half-even, because the retained digit 7 is odd, so the half-up test cannot tell the required mode from the common wrong one",
+      "summary": "degenerate value: 2.675 also rounds up under banker's half-even, because the retained digit 7 is odd, so the half-up test cannot tell the required mode from the common wrong one"
+    },
+    {
+      "file": "tests/test_invoice.py",
+      "test": null,
+      "tier": "P1",
+      "category": "price_invoice final-field rounding never exercised: every input is cent-exact, so removing round_currency (float drift, 0.30000000000000004) survives",
+      "summary": "price_invoice final-field rounding never exercised: every input is cent-exact, so removing round_currency (float drift, 0.30000000000000004) survives"
+    },
+    {
+      "file": "tests/test_rates_client.py",
+      "test": "test_backoff_doubles_between_attempts",
+      "tier": "P3",
+      "category": "implicit input: the expected sleeps [0.5, 1.0, 2.0] rely on the production default backoff_seconds=0.5, which client_with never passes, so a hard-coded 2 ** (attempt - 2) passes",
+      "summary": "implicit input: the expected sleeps [0.5, 1.0, 2.0] rely on the production default backoff_seconds=0.5, which client_with never passes, so a hard-coded 2 ** (attempt - 2) passes"
+    },
+    {
+      "file": "tests/test_export.py",
+      "test": "test_export_writes_one_row_per_invoice",
+      "tier": "P3",
+      "category": "indirect fixture: export and convert test inputs are built with price_invoice, so expected values such as the 2026-02-14 due date depend on pricing and payment terms rules; construct Invoice literals instead",
+      "summary": "indirect fixture: export and convert test inputs are built with price_invoice, so expected values such as the 2026-02-14 due date depend on pricing and payment terms rules; construct Invoice literals instead"
     }
   ]
 }

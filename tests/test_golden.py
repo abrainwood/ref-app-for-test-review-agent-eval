@@ -10,8 +10,6 @@ KEY = json.loads((ROOT / "answer_key.json").read_text())
 GOLDEN = json.loads((ROOT / "canary" / "golden_smoke.slice.json").read_text())
 REPORT = grade.grade(GOLDEN, KEY, "slice")
 
-VALID_POINTS_ON_DECOY_TESTS = [15, 25]
-
 EXACT_HITS = {
     "pasted-expected-value": ([0], ["P0"]),
     "vacuous-loop": ([3], ["P0"]),
@@ -24,6 +22,7 @@ EXACT_HITS = {
     "owned-mock-interaction": ([7], ["P1"]),
     "helper-direct-tests": ([19], ["P2"]),
     "single-item-degenerate": ([24], ["P3"]),
+    "rates-final-backoff-unpinned": ([15], ["P1"]),
     "export-degenerate-row": ([10], ["P1"]),
     "due-date-tests-stdlib": ([23], ["P3"]),
     "lint-config-missing": ([17], ["P1"]),
@@ -52,12 +51,12 @@ def test_no_decoy_is_a_false_positive():
     assert REPORT["summary"]["false_positives"] == 0
 
 
-@pytest.mark.parametrize("index", VALID_POINTS_ON_DECOY_TESTS)
-def test_an_unrelated_valid_point_on_a_decoy_test_hits_no_plant_and_no_decoy(index):
+def test_the_caplog_tuple_readability_point_on_the_decoy_test_is_known_noise_and_hits_no_plant_or_decoy():
     claimed = {i for entry in [*REPORT["plants"].values(), *REPORT["decoys"].values()] for i in entry["matched"]}
 
-    assert index not in claimed
-    assert index in [m["index"] for m in REPORT["near_misses"]]
+    assert 25 not in claimed
+    assert 25 not in [m["index"] for m in REPORT["near_misses"]]
+    assert grade.grade({"findings": [GOLDEN["findings"][25]]}, KEY, "slice")["known_noise_count"] == 1
 
 
 def test_an_unpinned_outbound_request_and_an_unhandled_network_error_are_hits_filed_a_tier_too_high():
