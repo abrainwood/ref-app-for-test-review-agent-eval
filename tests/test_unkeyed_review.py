@@ -280,3 +280,28 @@ def test_a_non_unity_rate_finding_that_also_quotes_the_fake_message_still_credit
     report = grade.grade({"findings": [mixed]}, KEY, "slice")
 
     assert report["plants"]["degenerate-rate"]["hit"] is True
+
+
+RECURRING_COUPLING_HISTORY_FINDING = {
+    "file": "git history",
+    "test": None,
+    "tier": "P1",
+    "category": "recurring-coupling-class",
+    "summary": "Every billing feature commit added a new test file aimed at an internal helper rather than extending the interface tests: 2fa4736 imported _half_up, 7ddc122 (a pure rename refactor) then had to edit that test, ea19f78 added a _tier_for test, 2e24730 added test_lines.py for an in-package helper plus a mock of _format_rows and a direct _aggregate test. The same coupling class recurring four times is a tooling gap: enable a lint rule banning underscore imports and unittest.mock.patch of billing.* in tests, and require new behaviour to be pinned through billing.__all__ first."
+}
+
+
+def test_a_recurring_coupling_history_finding_credits_the_refactor_commit_plant_not_pasted_expected_value():
+    report = grade.grade({"findings": [RECURRING_COUPLING_HISTORY_FINDING]}, KEY, "whole_suite")
+
+    assert {pid for pid, p in report["plants"].items() if p["hit"]} == {"refactor-commit-edited-tests"}
+
+
+def test_copy_pasted_fixtures_in_a_history_finding_do_not_credit_pasted_expected_value():
+    fragmentation = {"file": "git history", "test": None, "tier": "P3", "category": "test-file-fragmentation",
+                     "summary": "Each feature commit added a new test file. Fixtures are copy-pasted as a result "
+                                "(ISSUED in 5 files, invoice_for in 2). Consolidate with shared fixtures in conftest."}
+
+    report = grade.grade({"findings": [fragmentation]}, KEY, "whole_suite")
+
+    assert not report["plants"]["pasted-expected-value"]["hit"]
