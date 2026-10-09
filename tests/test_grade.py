@@ -744,3 +744,75 @@ def test_conditional_tier_keywords_pass_the_stem_lint():
     keywords = [k for entry in REAL_KEY["plants"] for k in entry.get("conditional_expected", {}).get("keywords", [])]
 
     assert keywords and not {k.lower() for k in keywords} & UNSAFE_KEYWORDS
+
+
+VERIFICATION_LINT_FINDING = finding(
+    "repository", None, "P1", "missing-lint-config",
+    "The repository has no lint configuration (no pyproject or ruff config). This slice has a bare comparison with "
+    "no assert (B015), `pytest.raises(Exception)` (PT011) and tests reaching private symbols (`_tier_for`, "
+    "`_customer_name`, `billing.invoice.discount_rate`) more than once. Enable Ruff with B015, PT011, PT012 and S")
+
+
+@pytest.mark.parametrize("mode", ["slice", "whole_suite"])
+def test_a_lint_finding_filed_on_repository_hits_lint_config_missing_tier_ok(mode):
+    result = grade.grade({"findings": [VERIFICATION_LINT_FINDING]}, REAL_KEY, mode)["plants"]["lint-config-missing"]
+
+    assert result["hit"] is True
+    assert result["tier_ok"] is True
+
+
+def test_a_test_level_finding_that_mentions_pyproject_never_hits_lint_config_missing():
+    found = hit_ids([finding("tests/test_tax.py", "test_progressive_tax", "P1", "Tooling",
+                             "no pyproject, enable Ruff lint rules")])
+
+    assert "lint-config-missing" not in found
+
+
+def test_a_refactor_commit_finding_that_says_repository_hits_only_the_refactor_history_plant():
+    found = hit_ids([finding("git history", None, "P1", "History",
+                             "the repository history shows a refactor commit that had to edit tests")], "whole_suite")
+
+    assert found == {"refactor-commit-edited-tests"}
+
+
+UNPINNED_IDENTITY_FINDING = finding(
+    "tests/test_reports.py", None, "P1", "missing-coverage",
+    "Commit ed38f2c changed `_customer_name` from `customer.strip()` to the identity function, and no test changed. "
+    "Invoices for ' acme' and 'acme' now produce two report rows where before they produced one, and no test pins "
+    "either behaviour. test_report_customers mocks the function with `str`, so it hides the difference. A")
+FIXTURE_COMMIT_DELETES_TESTS_FINDING = finding(
+    "git history", None, "P3", "commit-hygiene",
+    "Commit e9250f4 ('Resolve each customer once per monthly report') also quietly deletes "
+    "tests/test_report_totals.py: a test of the private `_aggregate` and a mock of `_format_rows`. They were "
+    "replaced by build_report tests, which is the right direction, but deleting tests belongs in its own commit "
+    "that names the tests re")
+
+
+@pytest.mark.parametrize("noisy", [UNPINNED_IDENTITY_FINDING, FIXTURE_COMMIT_DELETES_TESTS_FINDING],
+                         ids=["identity-lookup", "deleted-report-totals"])
+@pytest.mark.parametrize("mode", ["slice", "whole_suite"])
+def test_comments_on_our_own_fixture_commits_are_known_noise_not_unkeyed(noisy, mode):
+    report = grade.grade({"findings": [noisy]}, REAL_KEY, mode)
+
+    assert report["known_noise_count"] == 1
+    assert report["unkeyed"] == []
+
+
+@pytest.mark.parametrize("realistic, expected_plant, expected_decoy", [
+    (finding("git history", None, "P1", "History", "Refactor: rename rounding helper had to edit tests"),
+     "refactor-commit-edited-tests", None),
+    (finding("tests/test_report_customers.py", "test_customer_details_are_resolved_once_per_customer", "ARCH",
+             "Hidden lookup", "patches the private _customer_name; inject the lookup"),
+     "architecture-report-customer-lookup", None),
+    (finding("billing/reports.py", None, "ARCH", "Hidden lookup", "_customer_name is hard-wired; inject the lookup"),
+     "architecture-report-customer-lookup", None),
+    (finding("tests/test_reports.py", None, "P2", "wrong level", "build_report tests are too broad, integration style"),
+     None, "report-interface"),
+], ids=["refactor-history", "lookup-test", "lookup-production", "report-interface-accusation"])
+def test_noise_never_swallows_a_finding_that_should_hit_a_plant_or_decoy(realistic, expected_plant, expected_decoy):
+    report = grade.grade({"findings": [realistic]}, REAL_KEY, "whole_suite")
+
+    assert report["known_noise_count"] == 0
+    hit = {pid for pid, p in report["plants"].items() if p["hit"]}
+    false_positive = {did for did, d in report["decoys"].items() if d["false_positive"]}
+    assert (hit, false_positive) == ({expected_plant} - {None}, {expected_decoy} - {None})
