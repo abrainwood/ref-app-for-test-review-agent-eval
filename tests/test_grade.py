@@ -547,7 +547,6 @@ REALISTIC_ACCUSATIONS = {
     "caplog-warning": "the caplog assertion is brittle: log assertions are brittle",
     "injected-sleep": "the test mocks sleep instead of waiting",
     "fake-of-own-wrapper": "FakeRates is a mock of our own wrapper",
-    "frozen-clock": "the frozen clock hides real time behaviour",
 }
 
 
@@ -615,7 +614,7 @@ def test_a_file_given_as_path_and_test_separated_by_double_colon_names_the_test(
 
 
 GOLDEN_SLICE = json.loads((Path(__file__).resolve().parent.parent / "canary" / "golden_smoke.slice.json").read_text())["findings"]
-VALID_POINTS_ON_DECOY_TESTS = [14, 15, 23, 25]
+VALID_POINTS_ON_DECOY_TESTS = [15, 25]
 
 
 @pytest.mark.parametrize("index", VALID_POINTS_ON_DECOY_TESTS)

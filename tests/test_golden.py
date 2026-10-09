@@ -10,8 +10,7 @@ KEY = json.loads((ROOT / "answer_key.json").read_text())
 GOLDEN = json.loads((ROOT / "canary" / "golden_smoke.slice.json").read_text())
 REPORT = grade.grade(GOLDEN, KEY, "slice")
 
-VALID_POINTS_ON_DECOY_TESTS = [14, 15, 23, 25]
-LEGIT_OUTSIDE_THE_KEY = [10, 16]
+VALID_POINTS_ON_DECOY_TESTS = [15, 25]
 
 EXACT_HITS = {
     "pasted-expected-value": ([0], ["P0"]),
@@ -23,7 +22,10 @@ EXACT_HITS = {
     "degenerate-rate": ([4], ["P0"]),
     "test-docstring": ([21], ["P3"]),
     "owned-mock-interaction": ([7], ["P1"]),
-    "helper-direct-tests": ([19, 24], ["P2", "P3"]),
+    "helper-direct-tests": ([19], ["P2"]),
+    "single-item-degenerate": ([24], ["P3"]),
+    "export-degenerate-row": ([10], ["P1"]),
+    "due-date-tests-stdlib": ([23], ["P3"]),
     "lint-config-missing": ([17], ["P1"]),
     "pre-existing-private-import": ([36], ["OBSERVED"]),
     "calc-degenerate-operands": ([33, 34, 35], ["OBSERVED"] * 3),
@@ -31,7 +33,7 @@ EXACT_HITS = {
     "calc-mock-code-under-test": ([27], ["OBSERVED"]),
     "calc-order-dependent": ([26], ["OBSERVED"]),
     "calc-sleep": ([31], ["OBSERVED"]),
-    "calc-skip-and-commented": ([29], ["OBSERVED"]),
+    "calc-skip-and-commented": ([29, 30], ["OBSERVED"] * 2),
     "calc-subprocess-unit": ([32], ["OBSERVED"]),
     "calc-e2e-weak": ([37], ["OBSERVED"]),
 }
@@ -58,9 +60,10 @@ def test_an_unrelated_valid_point_on_a_decoy_test_hits_no_plant_and_no_decoy(ind
     assert index in [m["index"] for m in REPORT["near_misses"]]
 
 
-@pytest.mark.parametrize("index", LEGIT_OUTSIDE_THE_KEY)
-def test_a_legit_finding_outside_the_key_is_unkeyed(index):
-    assert GOLDEN["findings"][index] in REPORT["unkeyed"]
+def test_an_unpinned_outbound_request_and_an_unhandled_network_error_are_hits_filed_a_tier_too_high():
+    assert [(pid, plant_matched(pid), REPORT["plants"][pid]["tiers_seen"], REPORT["plants"][pid]["tier_ok"])
+            for pid in ("rates-timeout-unpinned", "rates-network-errors-unhandled")] == [
+        ("rates-timeout-unpinned", [14], ["P1"], False), ("rates-network-errors-unhandled", [16], ["P1"], False)]
 
 
 def test_the_lint_gap_finding_on_the_lint_config_label_hits_lint_config_missing_tier_ok():
