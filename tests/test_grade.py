@@ -507,6 +507,17 @@ def test_architecture_note_filed_on_the_reports_interface_test_file_hits_the_pla
     assert report["decoys"]["report-interface"]["false_positive"] is False
 
 
+@pytest.mark.parametrize("mode", ["slice", "whole_suite"])
+@pytest.mark.parametrize("tier", ["P1", "P2", "ARCH"])
+def test_report_aggregation_accepts_lifting_to_build_report_and_the_architecture_note(mode, tier):
+    findings = [finding("tests/test_report_totals.py", None, tier, "Coupled to private aggregation",
+                        "_aggregate is private; cent drift shows through build_report at .5 boundaries, test there")]
+
+    report = grade.grade({"findings": findings}, REAL_KEY, mode)
+
+    assert report["plants"]["architecture-report-aggregation"]["tier_ok"] is True
+
+
 def test_helper_direct_tests_is_hit_by_a_finding_on_the_helpers_production_file():
     found = hit_ids([finding("billing/lines.py", None, "P2", "Helper tested directly",
                              "line_total is an in-package helper only invoice.py calls")])
