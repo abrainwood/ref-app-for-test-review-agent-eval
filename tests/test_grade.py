@@ -660,3 +660,12 @@ def test_a_label_file_without_an_anchor_term_in_the_summary_does_not_hit_the_rep
     found = hit_ids([finding("lint config", None, "P1", "Tooling", "Ruff is not configured")])
 
     assert "lint-config-missing" not in found
+
+
+def test_untested_cent_aggregation_finding_on_reports_py_does_not_hit_the_lookup_plant():
+    findings = [finding("billing/reports.py", None, "P2", "Untested aggregation",
+                        "the cent aggregation through build_report is untested")]
+
+    report = grade.grade({"findings": findings}, REAL_KEY, "slice")
+
+    assert report["plants"]["architecture-report-customer-lookup"]["hit"] is False
