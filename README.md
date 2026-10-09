@@ -13,7 +13,7 @@ This orphan branch holds the grading data for the fixture on `main`. Keep it off
 
 Run: `python3 prove.py <path-to-fixture-checkout>` - exits non-zero on any mismatch or missing edit target. pytest exit codes 0 = pass, 1 and 2 (failures, collection errors from a rename) = fail; anything else (3, 4 no such target, 5 nothing collected) = error, which never matches an expectation.
 
-The fixture's billing rules are in `SPEC.md` on `main`. The `pasted-expected-value` plant is a real per-line rounding bug that contradicts SPEC.md, and its test pins it.
+The fixture's billing rules are in `SPEC.md` on `main`. The `architecture-report-customer-lookup` plant has no observable output through build_report (once-per-customer lookup); the right review is a production seam. The `pasted-expected-value` plant is a real per-line rounding bug that contradicts SPEC.md, and its test pins it.
 
 
 ## Harness-agnostic grading contract

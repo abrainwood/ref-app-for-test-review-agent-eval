@@ -33,6 +33,13 @@ def apply_edits(workdir, edits):
         path.write_text(text.replace(edit["find"], edit["replace"]))
 
 
+def proofs_of(entry):
+    proof = entry["proof"]
+    if proof is None:
+        return []
+    return proof if isinstance(proof, list) else [proof]
+
+
 def run_proof(fixture, proof):
     with tempfile.TemporaryDirectory() as tmp:
         workdir = Path(tmp) / "fixture"
@@ -47,8 +54,8 @@ def main(fixture):
     mismatches = 0
     baseline = run_proof(fixture, {"edits": [], "expect": {"tests": "pass"}})
     for entry in [{"id": "baseline", "proof": None}] + key["plants"] + key["decoys"]:
-        results = baseline if entry["id"] == "baseline" else (
-            run_proof(fixture, entry["proof"]) if entry["proof"] else [])
+        results = baseline if entry["id"] == "baseline" else [
+            result for proof in proofs_of(entry) for result in run_proof(fixture, proof)]
         for target, wanted, got in results:
             verdict = "ok" if wanted == got else "MISMATCH"
             mismatches += verdict != "ok"

@@ -113,11 +113,11 @@
       "summary": "coupling: direct tests of in-package helper line_total created this slice; only invoice.py calls it (line_total)"
     },
     {
-      "file": "tests/test_report_totals.py",
+      "file": "billing/reports.py",
       "test": null,
       "tier": "ARCH",
-      "category": "architecture: build_report (predates slice) renders whole units only, so cent-accurate aggregation is unobservable through it; tests reach _aggregate and patch _format_rows",
-      "summary": "architecture: build_report (predates slice) renders whole units only, so cent-accurate aggregation is unobservable through it; tests reach _aggregate and patch _format_rows (_aggregate)"
+      "category": "architecture: once-per-customer resolution has no output through build_report, so no test through the interface can express it; the test patches the private _customer_name. Inject the lookup (a production seam) and assert on a counting fake at the boundary",
+      "summary": "architecture: once-per-customer resolution has no output through build_report, so no test through the interface can express it; the test patches the private _customer_name. Inject the lookup (a production seam) and assert on a counting fake at the boundary (_customer_name)"
     },
     {
       "file": "tests/test_rounding.py",

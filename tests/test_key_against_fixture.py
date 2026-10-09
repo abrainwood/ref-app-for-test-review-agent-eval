@@ -6,6 +6,10 @@ from pathlib import Path
 
 import pytest
 
+import prove
+
+import prove
+
 ROOT = Path(__file__).resolve().parent.parent
 KEY = json.loads((ROOT / "answer_key.json").read_text())
 FIXTURE_SOURCE = os.environ.get("REF_APP_REPO", "https://github.com/abrainwood/ref-app-for-test-review-agent-eval.git")
@@ -33,7 +37,8 @@ def key_targets():
     for entry in entries:
         if entry["test"] != "repo" and not entry["test"].startswith("git:"):
             targets.update(entry.get("tests", [entry["test"]]))
-        targets.update(entry["proof"]["expect"] if entry["proof"] else [])
+        for proof in prove.proofs_of(entry):
+            targets.update(proof["expect"])
     return targets - DELIBERATELY_ABSENT
 
 
