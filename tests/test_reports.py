@@ -29,3 +29,8 @@ def test_empty_report_is_blank():
 def test_report_sums_a_customers_invoices_in_cents_before_rounding_to_whole_units():
     report = build_report([invoice_for("acme", 0.7), invoice_for("acme", 1.4), invoice_for("acme", 1.4)])
     assert report == "acme                         4"
+
+
+def test_report_rounds_a_half_unit_total_to_the_even_neighbour():
+    report = build_report([invoice_for("acme", 0.5), invoice_for("acme", 2.0)])
+    assert report == "acme                         2"

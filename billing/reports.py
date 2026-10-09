@@ -4,7 +4,7 @@ from billing.rounding import CENT
 
 
 def _customer_name(customer):
-    return customer.strip()
+    return customer
 
 
 def _aggregate(invoices):
