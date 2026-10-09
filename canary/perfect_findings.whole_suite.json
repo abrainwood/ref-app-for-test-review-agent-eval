@@ -202,6 +202,62 @@
       "tier": "P0",
       "category": "E2E existence/substring/exit-code assertions; arithmetic belongs in unit tests",
       "summary": "E2E existence/substring/exit-code assertions; arithmetic belongs in unit tests"
+    },
+    {
+      "file": "tests/test_export.py",
+      "test": "test_export_writes_one_row_per_invoice",
+      "tier": "P1",
+      "category": "degenerate data: one invoice with discount = tax = 0 and subtotal == total passes swapped money columns or an export that writes only the first invoice",
+      "summary": "degenerate data: one invoice with discount = tax = 0 and subtotal == total passes swapped money columns or an export that writes only the first invoice"
+    },
+    {
+      "file": "tests/test_lines.py",
+      "test": "test_line_total_for_single_item",
+      "tier": "P2",
+      "category": "degenerate quantity: 1 is the multiplicative identity, so returning unit_price passes; redundant with the 3 x 2.5 test",
+      "summary": "degenerate quantity: 1 is the multiplicative identity, so returning unit_price passes; redundant with the 3 x 2.5 test"
+    },
+    {
+      "file": "tests/test_rates_client.py",
+      "test": null,
+      "tier": "P2",
+      "category": "ScriptedOpener discards the url and timeout, so the outbound request (timeout value, URL template) is not pinned; the URL is only pinned indirectly through the warning log",
+      "summary": "ScriptedOpener discards the url and timeout, so the outbound request (timeout value, URL template) is not pinned; the URL is only pinned indirectly through the warning log"
+    },
+    {
+      "file": "tests/test_rates_client.py",
+      "test": null,
+      "tier": "P2",
+      "category": "URLError, socket timeout and a malformed body (missing 'rate') escape the client without retry or the WARNING log, and no test covers them",
+      "summary": "URLError, socket timeout and a malformed body (missing 'rate') escape the client without retry or the WARNING log, and no test covers them"
+    },
+    {
+      "file": "tests/test_invoice_lines.py",
+      "test": "test_due_date_rolls_over_year_end",
+      "tier": "P2",
+      "category": "duplicates test_payment_is_due_thirty_days_after_issue in tests/test_invoice.py; the year rollover only exercises datetime.timedelta",
+      "summary": "duplicates test_payment_is_due_thirty_days_after_issue in tests/test_invoice.py; the year rollover only exercises datetime.timedelta"
+    },
+    {
+      "file": "tests/test_cli_e2e.py",
+      "test": "test_e2e_add",
+      "tier": "P1",
+      "category": "substring checks on stdout ('3.0' in proc.stdout also pass for 13.0 or 3.05; also test_e2e_sub, test_e2e_mul)",
+      "summary": "substring checks on stdout ('3.0' in proc.stdout also pass for 13.0 or 3.05; also test_e2e_sub, test_e2e_mul)"
+    },
+    {
+      "file": "tests/test_cli_e2e.py",
+      "test": "test_e2e_exit_code",
+      "tier": "P2",
+      "category": "wrong level: every operation is spawned as a subprocess although cli.main(argv) is callable in-process; test_e2e_exit_code duplicates add",
+      "summary": "wrong level: every operation is spawned as a subprocess although cli.main(argv) is callable in-process; test_e2e_exit_code duplicates add"
+    },
+    {
+      "file": "tests/test_calculator.py",
+      "test": "test_ops_registry",
+      "tier": "P1",
+      "category": "structure coupling: asserts identities in the cli.OPS dispatch table, not behaviour",
+      "summary": "structure coupling: asserts identities in the cli.OPS dispatch table, not behaviour"
     }
   ]
 }
