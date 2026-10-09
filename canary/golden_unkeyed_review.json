@@ -1,0 +1,718 @@
+{
+ "modes": [
+  "slice",
+  "slice",
+  "slice",
+  "slice",
+  "slice",
+  "slice",
+  "slice",
+  "slice",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "slice",
+  "slice",
+  "slice",
+  "slice",
+  "slice",
+  "slice",
+  "slice",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "slice",
+  "slice",
+  "slice",
+  "slice",
+  "slice",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "whole_suite",
+  "slice",
+  "slice",
+  "slice",
+  "slice",
+  "slice",
+  "slice",
+  "slice",
+  "slice",
+  "slice",
+  "slice",
+  "slice",
+  "slice",
+  "slice",
+  "slice"
+ ],
+ "findings": [
+  {
+   "file": "tests/test_convert.py",
+   "test": null,
+   "tier": "P0",
+   "category": "missing-inverse-validation",
+   "summary": "No test in the file asserts a converted money field with a rate other than 1.0: the only 0.5-rate test checks customer and due date. The core behaviour of convert_invoice (multiply four fields by the rate, round half-up to cents) is therefore unverified; a mutant that drops `* rate` or skips round_currency survives the whole suite. Add one test with a non-trivial rate (e.g. 0.5 on a 1200/120/8/1088 invoice -> 600/60/4/544) and one that proves half-up rounding on a converted amount."
+  },
+  {
+   "file": "tests/test_lines.py",
+   "test": "test_line_total_for_single_item",
+   "tier": "P1",
+   "category": "degenerate-input",
+   "summary": "quantity 1 cannot tell `quantity * unit_price` from `unit_price`, `unit_price / quantity` or `unit_price ** quantity`. The sibling test with 3 x 2.5 already covers the operator; this one adds nothing. Delete (also covered by the file-level coupling finding)."
+  },
+  {
+   "file": "repository",
+   "test": null,
+   "tier": "P1",
+   "category": "missing-lint-rules",
+   "summary": "No pyproject/ruff/flake8 config exists. Three findings in this slice are mechanically detectable: bare comparison without assert (B015), pytest.raises(Exception) without match (PT011), and private-member access from tests (SLF001/PLC2701). Add Ruff with `select = ['B', 'PT', 'SLF', 'PLC2701']` scoped to tests/ and run it in CI."
+  },
+  {
+   "file": "tests/test_rates_client.py",
+   "test": null,
+   "tier": "P3",
+   "category": "missing-failure-path-coverage",
+   "summary": "Only HTTPError paths are tested. A urllib.error.URLError (DNS/connection refused), a socket timeout, or a body without a 'rate' key is not caught by rate() and escapes as a raw URLError/KeyError rather than RateUnavailable; no test documents whether that is intended. Add one test per path once the desired behaviour is decided (retry, wrap, or propagate)."
+  },
+  {
+   "file": "tests/test_invoice_lines.py",
+   "test": "test_due_date_rolls_over_year_end",
+   "tier": "P3",
+   "category": "coverage-padding-duplicate",
+   "summary": "Year-end rollover of `date + timedelta(days=30)` is datetime's behaviour, not ours; our rule (30 days after issue) is already pinned by tests/test_invoice.py::test_payment_is_due_thirty_days_after_issue. Delete."
+  },
+  {
+   "file": "tests/test_convert.py",
+   "test": null,
+   "tier": "P3",
+   "category": "indirect-fixture",
+   "summary": "Every test builds its input via price_invoice, so convert tests silently depend on discount and tax rules and must be re-derived whenever pricing changes. Construct Invoice directly with chosen amounts (as tests/test_reports.py does) so expected converted values are readable at a glance."
+  },
+  {
+   "file": "git history",
+   "test": null,
+   "tier": "P3",
+   "category": "mixed-commit",
+   "summary": "Commit 2e24730 bundles three unrelated changes (CSV export, per-line totals, Decimal report aggregation) with their tests. The per-line rounding change in particular is a behavioural (and spec-contradicting) change hidden inside a feature commit; split so each behaviour change is reviewable with its own tests."
+  },
+  {
+   "file": "tests/test_calculator.py",
+   "test": null,
+   "tier": "OBSERVED",
+   "category": "skip-without-follow-up",
+   "summary": "Pre-existing `@pytest.mark.skip(reason='flaky on CI')` at line 87 with no linked issue or removal deadline. A skipped flaky test is a failing test with a prettier error; fix the flakiness or delete it."
+  },
+  {
+   "file": "tests/test_convert.py",
+   "test": null,
+   "tier": "P0",
+   "category": "missing-positive-assertion",
+   "summary": "No test in the file asserts a converted monetary amount at a non-identity rate (the only 0.5-rate test checks customer and due date). If `rate` were dropped from every multiplication, or rounding were removed, the whole file would still pass. Add one test asserting all four converted fields at rate 0.5 and one that converted amounts are rounded to cents (e.g. 45.0 * 0.333)."
+  },
+  {
+   "file": "tests/test_calculator.py",
+   "test": null,
+   "tier": "P1",
+   "category": "commented-out-test",
+   "summary": "test_divide_by_zero is commented out, and nothing else in the repo exercises the divide-by-zero ValueError or the CLI's exit-code-1 error path. Restore it with `pytest.raises(ValueError, match='divide by zero')` and add the CLI counterpart."
+  },
+  {
+   "file": "tests/test_cli_e2e.py",
+   "test": "test_e2e_add",
+   "tier": "P1",
+   "category": "weak-substring-assertion",
+   "summary": "`'3.0' in proc.stdout` also matches '13.0', '3.05', '-3.0' or an error message containing the digits. Assert proc.stdout == '3.0\\n' and returncode == 0. Same defect in test_e2e_sub and test_e2e_mul."
+  },
+  {
+   "file": "tests/test_rates_client.py",
+   "test": null,
+   "tier": "P1",
+   "category": "outbound-effect-not-asserted",
+   "summary": "ScriptedOpener discards the url and timeout it receives, so no test pins the outbound request: a wrong URL template (e.g. /rate/ instead of /rates/) or a dropped REQUEST_TIMEOUT_SECONDS survives every test (the warning test only checks the url text inside the log message). Record (url, timeout) in the opener and assert them in test_returns_rate_from_response."
+  },
+  {
+   "file": "ledgerly",
+   "test": null,
+   "tier": "P1",
+   "category": "no-lint-for-test-smells",
+   "summary": "There is no ruff/flake8 config. Several findings here are mechanically catchable: B015 (bare comparison in test_export), PT011 (raises(Exception)), SLF001/PLC2701 (private imports in test_rounding, test_discounts, test_report_totals), PT018. Add a ruff config enabling B, PT and SLF for tests/ so these classes cannot recur."
+  },
+  {
+   "file": "tests/test_cli_e2e.py",
+   "test": null,
+   "tier": "P2",
+   "category": "e2e-doing-unit-work",
+   "summary": "cli.main(argv) is importable and returns the exit code, so the per-operation cases (add/sub/mul/div/usage) belong in an in-process test using capsys; each subprocess spawn costs ~50ms of interpreter start-up. Keep a single subprocess smoke test (one op, exact stdout, exit 0) to prove the entry point wiring, and add the missing in-process error cases: non-numeric input (exit 2) and div by zero (exit 1)."
+  },
+  {
+   "file": "tests/test_lines.py",
+   "test": "test_line_total_for_single_item",
+   "tier": "P3",
+   "category": "degenerate-input",
+   "summary": "quantity 1 is the multiplicative identity, so 1 * 0.4 == 0.4 also holds for returning unit_price unchanged or for 0.4 / 1. Subsumed by the delete recommended for the file."
+  },
+  {
+   "file": "tests/test_calculator.py",
+   "test": null,
+   "tier": "P3",
+   "category": "duplication",
+   "summary": "Seven tests exercise `add` (test_CALC_231, test_add, test_all_basic_ops, test_add_after_delay, test_results_recorder, test_result_is_numeric, test_add_via_subprocess) and none of them tests anything the others do not. After the P0/P1 deletions, one parametrized exact-value test per operator plus the divide-by-zero case is the whole file."
+  },
+  {
+   "file": "tests/test_calculator.py",
+   "test": "test_ops_registry",
+   "tier": "P3",
+   "category": "coupling-to-structure",
+   "summary": "Asserts the identity of entries in cli.OPS, which is wiring, not behaviour; the CLI tests already prove 'add' adds and 'sub' subtracts. Delete."
+  },
+  {
+   "file": "tests/test_cli_e2e.py",
+   "test": "test_e2e_exit_code",
+   "tier": "P3",
+   "category": "duplication",
+   "summary": "Runs `add 5 5` only to check returncode; fold the returncode assertion into the add test and delete this one."
+  },
+  {
+   "file": "tests/test_invoice_lines.py",
+   "test": "test_due_date_rolls_over_year_end",
+   "tier": "P3",
+   "category": "coverage-padding",
+   "summary": "test_payment_is_due_thirty_days_after_issue already pins PAYMENT_TERMS; year roll-over is datetime.timedelta's behaviour, not ours. Delete."
+  },
+  {
+   "file": "tests/test_export.py",
+   "test": "test_export_writes_one_row_per_invoice",
+   "tier": "P3",
+   "category": "name-stronger-than-assertion",
+   "summary": "Name promises one row per invoice but passes a single invoice, so an export that writes only the first invoice passes. Use two invoices for different customers."
+  },
+  {
+   "file": "tests/test_convert.py",
+   "test": "test_unknown_currency_propagates_rate_unavailable",
+   "tier": "P3",
+   "category": "asserts-fake-text",
+   "summary": "The `match='no rate for XYZ'` string is produced by the test's own FakeRates, not by production; it proves propagation but reads as if convert_invoice formats the message. Drop the match or assert on the exception type alone."
+  },
+  {
+   "file": "tests/test_reports.py",
+   "test": null,
+   "tier": "P3",
+   "category": "duplicated-fixture",
+   "summary": "invoice_for and DUE are copy-pasted between test_reports.py and test_report_totals.py; after the report_totals deletions move the helper into conftest.py (or keep it in the one surviving file)."
+  },
+  {
+   "file": "git history",
+   "test": null,
+   "tier": "P3",
+   "category": "no-mutation-testing",
+   "summary": "No mutation framework is configured. The P0 degenerate-input and vacuous-loop findings above are exactly what mutmut would surface as surviving arithmetic/relational mutants in calculator.py and discounts.py. Add mutmut (paths_to_mutate=billing,rates,calculator.py,cli.py) report-only, then ratchet."
+  },
+  {
+   "file": "git history",
+   "test": null,
+   "tier": "OBSERVED",
+   "category": "commit-introduced-spec-regression",
+   "summary": "Commit 2e24730 ('cent-accurate report totals') simultaneously introduced per-line rounding in price_invoice, contradicting SPEC rule 1, and shipped a test asserting the regressed value. The review process let a spec-contradicting expected value through because it was copied from the code's output rather than derived from SPEC.md."
+  },
+  {
+   "file": "tests/test_rates_client.py",
+   "test": "test_gives_up_after_max_attempts",
+   "tier": "OBSERVED",
+   "category": "misleading-fixture",
+   "summary": "ScriptedOpener is seeded with a fourth outcome (0.92) that is never consumed; a reader may think the client is expected to succeed on attempt 4. Harmless but worth trimming."
+  },
+  {
+   "file": "tests/test_rates_client.py",
+   "test": null,
+   "tier": "OBSERVED",
+   "category": "untested-failure-path",
+   "summary": "Non-HTTPError failures (urllib.error.URLError, socket timeout, malformed JSON / missing 'rate' key) propagate raw and un-retried; there is no spec saying they should be wrapped in RateUnavailable, so not actioned, but convert_invoice callers currently need to catch three exception types."
+  },
+  {
+   "file": "tests/test_reports.py",
+   "test": null,
+   "tier": "OBSERVED",
+   "category": "unspecified-rounding-rule",
+   "summary": "The whole-unit display uses Decimal's default ROUND_HALF_EVEN via `.0f` (7.50 -> '8', 6.50 -> '6'), which differs from the half-up rule used everywhere else. SPEC.md does not state the rule for the report, so no test can be written until it does."
+  },
+  {
+   "file": "tests/test_lines.py",
+   "test": "test_line_total_for_single_item",
+   "tier": "P1",
+   "category": "degenerate-input",
+   "summary": "Quantity 1 is the multiplicative identity: `return line.unit_price` passes. The other test in the file (3 x 2.5) already covers multiplication, so this adds nothing; delete it."
+  },
+  {
+   "file": "tests/test_rates_client.py",
+   "test": null,
+   "tier": "P1",
+   "category": "missing-outbound-request-assertion",
+   "summary": "ScriptedOpener discards the url and timeout, so no test pins the outbound request: a mutant that builds `{base}/rate/{currency}` or passes timeout=0 is only caught indirectly by the log-message test. Record the url/timeout in the opener and assert `f'{BASE_URL}/rates/EUR'` and REQUEST_TIMEOUT_SECONDS in the happy-path test."
+  },
+  {
+   "file": "tests/test_convert.py",
+   "test": "test_unknown_currency_propagates_rate_unavailable",
+   "tier": "P1",
+   "category": "testing-the-fake",
+   "summary": "The RateUnavailable and its message 'no rate for XYZ' are raised by the test's own FakeRates; convert_invoice contributes only not catching it. The match on the fake's text pins the fake, not the code. Either drop the match (exception type is the behaviour) or fold it into one 'does not swallow rate errors' assertion."
+  },
+  {
+   "file": "tests/test_invoice_lines.py",
+   "test": "test_due_date_rolls_over_year_end",
+   "tier": "P3",
+   "category": "duplicate-and-tests-the-library",
+   "summary": "Year-end rollover is datetime.timedelta's behaviour, and the 30-day term is already pinned by test_payment_is_due_thirty_days_after_issue in tests/test_invoice.py. Delete."
+  },
+  {
+   "file": "tests/test_discounts.py",
+   "test": null,
+   "tier": "P3",
+   "category": "magic-constants",
+   "summary": "BULK_THRESHOLD = 5000 corresponds to no tier in billing.discounts (the real thresholds are 500 and 1000) and SAMPLE_SUBTOTALS exists only to feed the vacuous loop. Remove both along with that test."
+  },
+  {
+   "file": "tests/test_export.py",
+   "test": null,
+   "tier": "P3",
+   "category": "duplicate-setup",
+   "summary": "test_export_writes_one_row_per_invoice re-exports the header too; once the header assertion is fixed, the two tests can be one write with a single `rows == [HEADER_ROW, DATA_ROW]` assertion. Name promises 'one row per invoice' but only exercises one invoice - use two."
+  },
+  {
+   "file": "git history",
+   "test": null,
+   "tier": "OBSERVED",
+   "category": "no-mutation-testing",
+   "summary": "No mutation framework is configured. Several findings here (threshold `>=` vs `>`, `< 0` vs `<= 0`, rate identity, line_total identity) are exactly the relational/arithmetic survivors mutmut would surface on billing/ in under a minute; add it report-only."
+  },
+  {
+   "file": "tests/test_calculator.py",
+   "test": "test_ops_registry",
+   "tier": "P2",
+   "category": "coupling-to-structure",
+   "summary": "Asserts identity of entries in cli.OPS (and only two of the four). This pins the internal dispatch-table shape rather than behaviour: a refactor to if/elif or functools.partial breaks it while the CLI still works. Lift to the interface: cli.main(['cli.py','sub','10','4']) printing 6.0, in-process, no production change (tests only; add 4 parametrized cases, delete 1)."
+  },
+  {
+   "file": "tests/test_calculator.py",
+   "test": null,
+   "tier": "P1",
+   "category": "commented-out-test",
+   "summary": "test_divide_by_zero is commented out at the bottom of the file, and no other test anywhere (unit or CLI) exercises divide(x, 0) raising ValueError or the CLI's exit-code-1 path for it. Coverage of the only error branch in calculator.py is a lie by omission. Restore it with pytest.raises(ValueError, match='divide by zero')."
+  },
+  {
+   "file": "tests/test_cli_e2e.py",
+   "test": null,
+   "tier": "P2",
+   "category": "e2e-doing-unit-work",
+   "summary": "All six tests spawn `python cli.py` as a subprocess although cli.main(argv) takes argv and returns the exit code, and output goes through print/stderr (capturable with capsys). Every case here (each op, usage error, exit codes) is a millisecond in-process unit test. Keep at most one subprocess smoke test proving `__main__` wiring and sys.exit(main()); move the rest down (tests only, no production change: add ~6 in-process cases incl. the untested invalid-number and divide-by-zero paths, delete 5 subprocess tests)."
+  },
+  {
+   "file": "tests/test_cli_e2e.py",
+   "test": null,
+   "tier": "P1",
+   "category": "missing-inverse-validation",
+   "summary": "cli.main has three failure paths (bad argc/op -> 2, non-numeric A/B -> 2 with 'A and B must be numbers', ValueError from divide -> 1 with 'error: ...') but only the usage path is tested. The non-numeric and divide-by-zero branches are untested at every layer; a mutant that drops either try/except (letting the traceback escape with exit 1) survives."
+  },
+  {
+   "file": "tests/test_cli_e2e.py",
+   "test": "test_e2e_add",
+   "tier": "P1",
+   "category": "substring-assertion",
+   "summary": "`'3.0' in proc.stdout` is a substring check: '13.0', '-3.0', '3.05' and '3.0\\nextra' all pass, and returncode is not checked. Assert proc.stdout == '3.0\\n' and proc.returncode == 0."
+  },
+  {
+   "file": "tests/test_cli_e2e.py",
+   "test": "test_e2e_sub",
+   "tier": "P1",
+   "category": "substring-assertion",
+   "summary": "`'6.0' in proc.stdout` passes for '-6.0', '16.0', '6.05'; exact stdout and returncode should be asserted."
+  },
+  {
+   "file": "tests/test_cli_e2e.py",
+   "test": "test_e2e_mul",
+   "tier": "P1",
+   "category": "substring-assertion",
+   "summary": "`'9.0' in proc.stdout` passes for '-9.0', '19.0', '9.05'; and mul 3 3 uses symmetric operands that cannot distinguish a*b from b*a or from a mis-dispatch to another op that happens to also give 9. Use asymmetric operands and an exact stdout assertion."
+  },
+  {
+   "file": "tests/test_cli_e2e.py",
+   "test": "test_e2e_exit_code",
+   "tier": "P1",
+   "category": "weak-assertion-duplicate",
+   "summary": "Runs `add 5 5` (symmetric operands) and checks only returncode == 0, ignoring output; it is the same path as test_e2e_add. Fold the returncode assertion into test_e2e_add and delete this test."
+  },
+  {
+   "file": "tests/test_convert.py",
+   "test": null,
+   "tier": "P0",
+   "category": "missing-core-behaviour",
+   "summary": "No test in the file asserts a converted amount with a non-identity rate. The module's entire job (multiply subtotal/discount/tax/total by rate and round to cents) is unverified: `* rate` -> `/ rate`, dropping round_currency, or converting only `total` all survive. Add one test with FakeRates({'EUR': 0.5}) on the 1200/120/8/1088 invoice asserting (600.0, 60.0, 4.0, 544.0), plus one that shows cent rounding (e.g. rate 0.333)."
+  },
+  {
+   "file": "tests/test_export.py",
+   "test": "test_export_writes_one_row_per_invoice",
+   "tier": "P1",
+   "category": "degenerate-input",
+   "summary": "Named 'one row per invoice' but exports a single invoice, so an implementation that writes only the first invoice (or only the last) passes. Export two invoices for different customers and assert both rows in order."
+  },
+  {
+   "file": "tests/test_invoice_lines.py",
+   "test": "test_due_date_rolls_over_year_end",
+   "tier": "P3",
+   "category": "duplicate-testing-the-library",
+   "summary": "Duplicates test_payment_is_due_thirty_days_after_issue in test_invoice.py; the extra 'year rollover' aspect tests datetime.timedelta, not our 30-day rule. Delete one of the two."
+  },
+  {
+   "file": "tests/test_rates_client.py",
+   "test": null,
+   "tier": "P1",
+   "category": "outbound-request-unasserted",
+   "summary": "ScriptedOpener discards the url and timeout it is called with, so no test checks the request URL on the happy path or that REQUEST_TIMEOUT_SECONDS is passed. The URL is only observed indirectly via the warning message in the exhausted-retries test; `timeout=` could be dropped or changed to 0 and the suite stays green. Outbound URL/timeout are material behaviour: record them in the fake and assert ('https://rates.example.test/rates/EUR', 5) in test_returns_rate_from_response."
+  },
+  {
+   "file": "tests/test_tax.py",
+   "test": null,
+   "tier": "P3",
+   "category": "missing-boundary-case",
+   "summary": "The lower bracket edge is tested at 1000 and 1001, but the upper edge is only tested at 5000 and 7000; there is no just-above-5000 case (5000.01 -> 400.002) to pin the `<=` at the top bracket boundary. Low risk because 7000 constrains the 20% rate, but add it for symmetry with test_just_above_first_threshold."
+  },
+  {
+   "file": "tests/test_invoice.py",
+   "test": null,
+   "tier": "P3",
+   "category": "file-split-without-rationale",
+   "summary": "price_invoice tests are spread over test_invoice.py, test_invoice_lines.py and test_invoice_discounting.py (and reports over test_reports.py / test_report_totals.py) with no layer or theme distinction - each later commit added a new file rather than extending the existing one. Merge per module so duplicates (due-date, silver tier, subtotal) are visible."
+  },
+  {
+   "file": "git history",
+   "test": null,
+   "tier": "P1",
+   "category": "feature-commit-contradicts-spec-with-pinning-test",
+   "summary": "Commit 2e24730 changed price_invoice from `sum(line.quantity * line.unit_price)` to `sum(line_total(line))` where line_total rounds each line, violating SPEC.md ('rounded ... only on the final invoice fields, never per line'), and in the same commit added a test whose expected value (2.02) was taken from the new output rather than from the spec (2.01). The history shows tests are being written from the code's behaviour, not from the rules; revert the per-line rounding and correct the test."
+  },
+  {
+   "file": "git history",
+   "test": null,
+   "tier": "OBSERVED",
+   "category": "context-from-history",
+   "summary": "The original README (before c252cef) described this repository as 'a deliberately flawed reference app' whose suite 'contains planted anti-patterns and lying tests'. The rewrite removed that disclosure. Nothing to action in the tests, but readers of this review should know the defects are seeded, not accidental, and that later commits (billing, rates) continued the same patterns rather than being a clean addition."
+  },
+  {
+   "file": "tests",
+   "test": null,
+   "tier": "P1",
+   "category": "no-lint-for-test-smells",
+   "summary": "No pyproject/ruff/flake8 configuration exists, so mechanically detectable smells present in the suite go unflagged: a bare comparison without assert (B015, test_export.py), pytest.raises(Exception) without match (PT011, test_invoice_lines.py), private-member imports from our own package (SLF001/PLC2701, test_rounding.py, test_discounts.py, test_report_totals.py). Add ruff with the PT, B, SLF rule sets enabled and gate CI on it."
+  },
+  {
+   "file": "tests",
+   "test": null,
+   "tier": "P3",
+   "category": "no-mutation-testing",
+   "summary": "No mutation framework is configured, and this session could not install one (package installation was blocked), so the mutant claims in this review are hand-derived. Add mutmut (pinned) with `paths_to_mutate = billing/,rates/,calculator.py,cli.py`, ignore arguments of LOGGER.* calls, run report-only first; the hand-derived survivors listed here (>= vs > in discounts, * vs / in convert, dropped timeout in rates.client, per-line rounding in lines) are the first things it should confirm."
+  },
+  {
+   "file": "tests/conftest.py",
+   "test": null,
+   "tier": "OBSERVED",
+   "category": "sys-path-hack",
+   "summary": "conftest.py inserts the repo root into sys.path instead of the project being installable (no pyproject.toml). Works, but it is why tests/test_cli_e2e.py has to run the CLI with cwd=ROOT and why a subprocess is needed at all to import cli. Low priority; packaging would make the e2e->unit move cleaner."
+  },
+  {
+   "file": "billing/reports.py",
+   "test": null,
+   "tier": "OBSERVED",
+   "category": "rounding-mode-inconsistency",
+   "summary": "The report formats Decimal totals with `:.0f`, which rounds half-to-even (0.5 -> '0', 1.5 -> '2'), while every other amount in the package rounds half-up and SPEC.md only says 'whole currency units'. No test pins either behaviour for an x.5 total. Not a test defect until the spec decides; flag for the spec owner."
+  },
+  {
+   "file": "rates/client.py",
+   "test": null,
+   "tier": "OBSERVED",
+   "category": "untested-production-gap",
+   "summary": "ExchangeRateClient.rate catches HTTPError only; a urllib.error.URLError (DNS failure, connection refused, timeout) propagates raw without retry or the WARNING log, bypassing the RateUnavailable contract that convert_invoice's callers rely on. No test covers it. Outside the test-suite remit but it is the kind of failure-path inverse test that should exist once the behaviour is decided."
+  },
+  {
+   "file": "tests/test_convert.py",
+   "test": null,
+   "tier": "P0",
+   "category": "missing-coverage",
+   "summary": "No test asserts a converted monetary field with a non-unity rate. The only non-1.0 case (EUR at 0.5) asserts customer and due only, so the core behaviour of convert_invoice (multiply subtotal/discount/tax/total by the rate and round to cents) is entirely unverified; a build that forgets `tax` or skips round_currency passes. Add one test with a rate like 0.835 that pins all four fields including the cent rounding."
+  },
+  {
+   "file": "tests/test_lines.py",
+   "test": "test_line_total_for_single_item",
+   "tier": "P1",
+   "category": "degenerate-input",
+   "summary": "quantity=1 is the multiplicative identity: `1 * 0.4 == 0.4` also holds for an implementation that returns unit_price alone or divides by quantity. The test cannot distinguish the operator under test and adds nothing to the 3 x 2.5 case. Delete."
+  },
+  {
+   "file": "tests/test_rates_client.py",
+   "test": null,
+   "tier": "P3",
+   "category": "unasserted-outbound-request",
+   "summary": "ScriptedOpener records call count but discards the `url` and `timeout` it is called with; the request URL shape (`{base}/rates/{currency}`) is only pinned as a side effect of the warning-log test, and REQUEST_TIMEOUT_SECONDS is never asserted. Have the fake record (url, timeout) and assert them once in test_returns_rate_from_response so the outbound request itself is covered, not just the response handling."
+  },
+  {
+   "file": "tests/test_calculator.py",
+   "test": null,
+   "tier": "OBSERVED",
+   "category": "pre-existing-anti-patterns",
+   "summary": "Pre-existing, outside the diff but serious: test_CALC_231_add_returns_result (ticket id in name, prose docstring, `is not None`); degenerate operands in test_subtract(0,0), test_divide(0,5), test_power(5,1) and test_add(2,2) that cannot distinguish the operator; test_add_after_delay sleeps 0.4s (slowest test in the suite); test_results_recorder/test_results_log_populated share the module-level RESULTS list and are order-dependent; test_add_is_patched asserts on the mock it just installed; test_add_via_subprocess spawns an interpreter to test an in-process function; test_power_large_exponent is skipped as 'flaky' with no issue link; a commented-out test_divide_by_zero leaves the only error path unpinned; test_all_basic_ops bundles four unrelated assertions."
+  },
+  {
+   "file": "tests/test_cli_e2e.py",
+   "test": null,
+   "tier": "OBSERVED",
+   "category": "pre-existing-wrong-level",
+   "summary": "Pre-existing: all six tests spawn a subprocess to exercise cli.main, which takes an argv list and returns an exit code and is directly callable in-process with capsys. test_e2e_div_produces_output asserts only that stdout is non-empty (tautological - passes for an error message). One subprocess test proving the entrypoint wiring is enough; the rest shift left to unit tests of cli.main."
+  },
+  {
+   "file": "tests/test_calculator.py",
+   "test": null,
+   "tier": "P1",
+   "category": "commented-out-test",
+   "summary": "test_divide_by_zero is commented out at the bottom of the file, and no other test at any layer exercises divide(x, 0) or the CLI's exit-code-1 path for it. The ValueError branch in calculator.divide and the `except ValueError` in cli.main are untested. Restore it as `pytest.raises(ValueError, match='Cannot divide by zero')`."
+  },
+  {
+   "file": "tests/test_calculator.py",
+   "test": "test_ops_registry",
+   "tier": "P1",
+   "category": "coupling-to-structure",
+   "summary": "Asserts identity of entries in cli.OPS - an internal lookup table. Renaming OPS or wrapping the callables (a pure refactor) breaks it, while it never proves the CLI dispatches correctly. The behaviour ('add' routes to addition) is already proven by calling main(['cli', 'add', '1', '2']). Delete; tests only, no production change."
+  },
+  {
+   "file": "tests/test_cli_e2e.py",
+   "test": null,
+   "tier": "P2",
+   "category": "wrong-level / E2E-doing-unit-work",
+   "summary": "All six tests spawn `python cli.py` in a subprocess, but cli.main(argv) already takes argv injectably and prints via sys.stdout/stderr, so every assertion here (exact output, exit code, usage message) can be made in-process with capsys in milliseconds. Keep at most one subprocess smoke test proving `python cli.py` is wired to main() and exits 0; move the per-operator and error-path cases down to tests calling cli.main directly. While there, replace the substring checks (`'3.0' in proc.stdout` also matches '13.0') with exact `proc.stdout == '3.0\\n'`, and add the two untested error paths: non-numeric A/B -> exit 2, div by zero -> exit 1 with 'Cannot divide by zero' on stderr."
+  },
+  {
+   "file": "tests/test_cli_e2e.py",
+   "test": "test_e2e_exit_code",
+   "tier": "P2",
+   "category": "duplication",
+   "summary": "Runs `add 5 5` and checks only the return code; test_e2e_add runs the same operation and checks only stdout. Both halves belong in one assertion on one add invocation (stdout == '10.0\\n' and returncode == 0). Merge."
+  },
+  {
+   "file": "tests/test_lines.py",
+   "test": "test_line_total_for_single_item",
+   "tier": "P3",
+   "category": "degenerate-input",
+   "summary": "quantity 1 is the multiplicative identity, so 1 x 0.4 == 0.4 passes for a function that returns unit_price unchanged or divides by quantity. Subsumed by the lift-up above."
+  },
+  {
+   "file": "tests/test_invoice_lines.py",
+   "test": "test_due_date_rolls_over_year_end",
+   "tier": "P3",
+   "category": "coverage-padding / duplication",
+   "summary": "Year-end rollover is datetime.timedelta's behaviour, not ours; our rule ('30 days after issue') is already pinned by test_payment_is_due_thirty_days_after_issue in test_invoice.py. Delete, or fold the date into a parametrize on that test if a second example is wanted."
+  },
+  {
+   "file": "tests/test_invoice_lines.py",
+   "test": null,
+   "tier": "P3",
+   "category": "file-organisation / duplication",
+   "summary": "tests/test_invoice.py, tests/test_invoice_lines.py and tests/test_invoice_discounting.py all test price_invoice through the same public interface with the same ISSUED constant and the same Line helper. Three files for one interface spreads the coverage picture (e.g. nobody noticed the tier-boundary gap) and triplicates setup. Consolidate into test_invoice.py once the P0/P1 deletions land."
+  },
+  {
+   "file": "tests/test_report_totals.py",
+   "test": null,
+   "tier": "P3",
+   "category": "duplication",
+   "summary": "Duplicates the invoice_for helper and DUE constant from tests/test_reports.py verbatim. After the coupling fixes this file has at most one test left; merge it into test_reports.py (or a shared conftest fixture)."
+  },
+  {
+   "file": "tests/test_cli_e2e.py",
+   "test": "test_e2e_add",
+   "tier": "P3",
+   "category": "weak-assertion",
+   "summary": "`'3.0' in proc.stdout` is a substring match - it passes if the CLI printed '13.0', '3.01', or usage text containing '3.0'. Same pattern in test_e2e_sub and test_e2e_mul. Assert the exact stdout (`== '3.0\\n'`)."
+  },
+  {
+   "file": "tests/test_tax.py",
+   "test": "test_just_above_first_threshold",
+   "tier": "P3",
+   "category": "magic-number / float-tolerance",
+   "summary": "`round(progressive_tax(1001), 6) == 0.1` hides a float-precision workaround behind a magic 6. Use pytest.approx(0.1) which states the intent, and name the bracket threshold (1000) rather than repeating the literal 1001 across tests."
+  },
+  {
+   "file": "tests/test_rates_client.py",
+   "test": null,
+   "tier": "P3",
+   "category": "missing-inverse-validation",
+   "summary": "Good suite overall, but one failure path is unpinned: urllib.error.URLError (DNS failure, connection refused, timeout) is not an HTTPError, so it escapes ExchangeRateClient.rate as a raw URLError instead of RateUnavailable, with no retry and no WARNING. No test documents whether that is intended. Add one ScriptedOpener case raising URLError and assert the agreed behaviour (likely: retried, then RateUnavailable + warning)."
+  },
+  {
+   "file": "repository",
+   "test": null,
+   "tier": "P2",
+   "category": "no-layer-markers / no-mutation-testing",
+   "summary": "69 tests: 7 spawn subprocesses (6 in test_cli_e2e.py, 1 in test_calculator.py), 2 touch the real filesystem at a fixed path, 60 are in-process. The pyramid shape is fine but nothing separates layers (no markers, no directories), so the 0.4s sleep and the subprocess tests sit in the same fast lane as everything else. Add `unit`/`e2e` markers and run unit by default. No mutation framework is present; add mutmut (pip-only, works with this layout) - the discount-threshold `>=`->`>` mutant and the convert_invoice `*`->`/` mutant are two survivors I expect it to confirm."
+  },
+  {
+   "file": "git history",
+   "test": null,
+   "tier": "P1",
+   "category": "behaviour-change-disguised-as-feature",
+   "summary": "Commit 2e24730 ('Add CSV export, line totals and cent-accurate report totals') bundles three unrelated changes and, inside the 'line totals' one, silently alters price_invoice to round each line before summing - a change to the documented pricing rule in SPEC.md, not a new feature. The test added in the same commit (test_fractional_unit_prices_are_summed_before_rounding) asserts the new 2.02 result under a name describing the old behaviour, so the regression is now protected by the suite. The commit should have been three commits, and the rounding change should have failed an existing interface test rather than being pinned by a new one."
+  },
+  {
+   "file": "billing/export.py",
+   "test": null,
+   "tier": "OBSERVED",
+   "category": "missing-coverage",
+   "summary": "export_csv is tested with a single invoice whose discount and tax are both 0.00 and whose amounts are already two-decimal. No test covers multiple invoices (row order), a value that needs '.2f' padding (e.g. 8.0 -> '8.00') or a customer name containing a comma/quote (csv quoting). Worth one parametrized case when the file is reworked onto tmp_path; not a blocker on its own."
+  },
+  {
+   "file": "rates/client.py",
+   "test": null,
+   "tier": "OBSERVED",
+   "category": "production-gap-surfaced-by-review",
+   "summary": "Not a test defect but noted while reading: a response whose JSON lacks 'rate' or is not a number raises KeyError/ValueError straight through rate(), and a 200 response is never validated. Whether that should be RateUnavailable is a product decision; raising it here so the eventual test has a spec to pin."
+  },
+  {
+   "file": "tests/test_export.py",
+   "test": "test_export_writes_one_row_per_invoice",
+   "tier": "P1",
+   "category": "degenerate-input",
+   "summary": "The invoice has subtotal == total (45.00) and discount == tax (0.00), so swapping those columns in export_csv still passes. Use an invoice where every money field has a different value (for example a 1200 order: 1200.00/120.00/8.00/1088.00). Also cover more than one invoice so 'one row per invoice' is actually tested."
+  },
+  {
+   "file": "tests/test_rates_client.py",
+   "test": "test_returns_rate_from_response",
+   "tier": "P1",
+   "category": "outbound-request-unasserted",
+   "summary": "ScriptedOpener ignores the url and timeout it receives, so a wrong URL (wrong path, wrong currency) or a missing timeout would pass. Record the arguments and assert url == f'{BASE_URL}/rates/EUR' and that a timeout is passed."
+  },
+  {
+   "file": "tests/test_rates_client.py",
+   "test": null,
+   "tier": "P1",
+   "category": "missing-failure-path",
+   "summary": "Network-level failures (URLError, socket timeout) and malformed response bodies are not tested. The client only catches HTTPError, so a timeout escapes as a raw URLError instead of RateUnavailable, is not retried and is not logged. Add tests that pin the intended behaviour; they will expose this gap."
+  },
+  {
+   "file": "tests/test_invoice_lines.py",
+   "test": "test_due_date_rolls_over_year_end",
+   "tier": "P3",
+   "category": "duplicate-tests-stdlib",
+   "summary": "Rolling over the year end is handled by date + timedelta from the standard library. test_payment_is_due_thirty_days_after_issue already covers the 30-day rule. Merge or delete."
+  },
+  {
+   "file": "tests/test_convert.py",
+   "test": "test_unknown_currency_propagates_rate_unavailable",
+   "tier": "P3",
+   "category": "asserts-on-fake",
+   "summary": "The match string 'no rate for XYZ' is the FakeRates message, so the test partly checks the fake. Matching only on the exception type is enough to show that it propagates."
+  },
+  {
+   "file": "repository",
+   "test": null,
+   "tier": "P3",
+   "category": "no-mutation-testing",
+   "summary": "There is no mutation testing framework. Several survivors here (>= turned into >, rate ignored, columns swapped) are the kind mutmut would flag. Add mutmut for billing/ and rates/."
+  },
+  {
+   "file": "tests/test_rates_client.py",
+   "test": null,
+   "tier": "P1",
+   "category": "missing-failure-path",
+   "summary": "ScriptedOpener ignores `url` and `timeout`, so no test checks the outbound request URL (/rates/<currency>) or that a timeout is passed at all. There are no tests for URLError or socket timeouts. Those are the most common network failures, and the client doesn't retry or wrap them, so they escape as raw exceptions instead of RateUnavailable. Record the args and assert on them, and add URLError and timeout cases."
+  },
+  {
+   "file": "tests/test_rates_client.py",
+   "test": "test_retries_transient_failures_until_success",
+   "tier": "P3",
+   "category": "weak-assertion",
+   "summary": "It checks the returned rate but never `opener.calls == 3`. The retry count is the spec here, so assert it."
+  },
+  {
+   "file": "tests/test_convert.py",
+   "test": "test_unknown_currency_propagates_rate_unavailable",
+   "tier": "P3",
+   "category": "test-double-defines-behaviour",
+   "summary": "The 'no rate for XYZ' message comes from the FakeRates test double, not from production code, so the match only checks the fake. Assert the exception type without matching the message."
+  },
+  {
+   "file": "git history",
+   "test": null,
+   "tier": "P3",
+   "category": "commit-hygiene",
+   "summary": "Commit 2e24730 combines three unrelated changes (CSV export, line totals, report decimal totals), and none of the three commits has a message body. That makes it hard to bisect or revert the per-line rounding regression on its own."
+  },
+  {
+   "file": "tests/test_cli_e2e.py",
+   "test": null,
+   "tier": "OBSERVED",
+   "category": "e2e-doing-unit-work",
+   "summary": "Pre-existing: every arithmetic case is tested by spawning a subprocess. Only usage and exit-code wiring needs E2E. test_e2e_div_produces_output only checks that output isn't empty, and mul(3,3) uses equal operands that can't tell the operation apart. Move the arithmetic into calculator unit tests."
+  },
+  {
+   "file": "tests/test_rates_client.py",
+   "test": null,
+   "tier": "P1",
+   "category": "missing-failure-path",
+   "summary": "Only HTTPError is scripted. Network failures (URLError, socket timeout) are neither handled by ExchangeRateClient nor tested, so they escape as raw exceptions instead of being retried and raising RateUnavailable. ScriptedOpener also ignores url and timeout, so the success path never checks the request URL or the 5s timeout. Also, with max_attempts=3 and all attempts failing, no test checks that there is no sleep after the final attempt (sleeps == [0.5, 1.0])."
+  },
+  {
+   "file": "tests/test_lines.py",
+   "test": "test_line_total_for_single_item",
+   "tier": "P3",
+   "category": "degenerate-input",
+   "summary": "A quantity of 1 can't tell multiplication apart from returning unit_price, so this duplicates test_line_total_multiplies_quantity_by_price at lower strength."
+  },
+  {
+   "file": "repository",
+   "test": null,
+   "tier": "P1",
+   "category": "missing-lint-rules",
+   "summary": "There is no lint config enforcing test smells. Bare comparisons (B015), broad pytest.raises (PT011) and private access in tests (SLF001/PLC2701) all appear in this slice. Enable Ruff with the B, PT and SLF rule sets on tests/."
+  }
+ ]
+}

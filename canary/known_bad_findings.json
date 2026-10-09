@@ -4,7 +4,7 @@
       "file": "tests/test_discounts.py",
       "test": "test_every_bulk_order_is_discounted",
       "tier": "P3",
-      "category": "style",
+      "category": "vacuous loop",
       "summary": "wrong tier: lying test reported as cleanup"
     },
     {

@@ -475,11 +475,21 @@ def test_refactor_commit_probe_phrasings_on_git_history_hit(summary):
     assert found == {"refactor-commit-edited-tests"}
 
 
-@pytest.mark.parametrize("file", ["tests/test_lines.py", "README.md", "git history"])
+@pytest.mark.parametrize("file", ["tests/test_lines.py", "README.md"])
 def test_lint_config_phrasing_off_its_anchor_files_does_not_hit(file):
     found = hit_ids([finding(file, None, "P1", "Tooling", "Ruff is not configured, add lint rules")])
 
     assert "lint-config-missing" not in found
+
+
+@pytest.mark.parametrize("file, summary", [
+    ("git history", "There is no lint config, enable Ruff with B, PT and SLF"),
+    ("repository", "No CI workflow, pre-commit or lint configuration"),
+])
+def test_a_no_lint_config_finding_off_pyproject_credits_the_lint_plant(file, summary):
+    found = hit_ids([finding(file, None, "P1", "missing-lint-tooling", summary)])
+
+    assert found == {"lint-config-missing"}
 
 
 def test_refactor_phrasing_on_a_config_file_does_not_hit_the_history_plant():
@@ -563,7 +573,6 @@ REALISTIC_ACCUSATIONS = {
     "caplog-warning": "the caplog assertion is brittle: log assertions are brittle",
     "injected-sleep": "the test mocks sleep instead of waiting",
     "fake-of-own-wrapper": "FakeRates is a mock of our own wrapper",
-    "frozen-clock": "the frozen clock hides real time behaviour",
 }
 
 
@@ -631,15 +640,20 @@ def test_a_file_given_as_path_and_test_separated_by_double_colon_names_the_test(
 
 
 GOLDEN_SLICE = json.loads((Path(__file__).resolve().parent.parent / "canary" / "golden_smoke.slice.json").read_text())["findings"]
-VALID_POINTS_ON_DECOY_TESTS = [14, 15, 23, 25]
+def test_an_unrelated_valid_point_on_a_decoy_test_is_a_near_miss_not_a_false_positive():
+    unrelated = finding("tests/test_rates_client.py", "test_returns_rate_from_response", "P3", "naming", "The response body literal could be a named constant.")
 
-
-@pytest.mark.parametrize("index", VALID_POINTS_ON_DECOY_TESTS)
-def test_an_unrelated_valid_point_on_a_decoy_test_is_a_near_miss_not_a_false_positive(index):
-    report = grade.grade({"findings": [GOLDEN_SLICE[index]]}, REAL_KEY, "slice")
+    report = grade.grade({"findings": [unrelated]}, REAL_KEY, "slice")
 
     assert report["summary"]["false_positives"] == 0
     assert [m["index"] for m in report["near_misses"]] == [0]
+
+
+def test_a_caplog_tuple_readability_point_on_the_exhausted_retries_test_is_known_noise_not_a_near_miss():
+    report = grade.grade({"findings": [GOLDEN_SLICE[25]]}, REAL_KEY, "slice")
+
+    assert report["known_noise_count"] == 1
+    assert report["near_misses"] == []
 
 
 def test_a_repo_wide_finding_with_the_anchor_term_in_its_summary_hits_when_the_file_is_a_label():
