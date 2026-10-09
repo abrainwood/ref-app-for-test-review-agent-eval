@@ -173,12 +173,18 @@ def _near_misses(entries, findings, claimed):
     return near
 
 
+def _tier_accepted(plant, finding, mode):
+    conditional = plant.get("conditional_expected")
+    return finding["tier"] in plant["expected"][mode] or bool(
+        conditional and finding["tier"] in conditional[mode] and _mentions_any(conditional["keywords"], finding))
+
+
 def _grade_plant(plant, findings, matched, mode):
     seen = [findings[i]["tier"] for i in matched]
-    accepted = plant["expected"][mode]
     return {
         "hit": bool(matched),
-        "tier_ok": any(t in accepted for t in seen) if seen else "OMITTED" in accepted,
+        "tier_ok": any(_tier_accepted(plant, findings[i], mode) for i in matched) if matched
+        else "OMITTED" in plant["expected"][mode],
         "tiers_seen": seen,
         "matched": matched,
     }
