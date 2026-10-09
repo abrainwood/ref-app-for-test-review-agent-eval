@@ -669,3 +669,78 @@ def test_untested_cent_aggregation_finding_on_reports_py_does_not_hit_the_lookup
     report = grade.grade({"findings": findings}, REAL_KEY, "slice")
 
     assert report["plants"]["architecture-report-customer-lookup"]["hit"] is False
+
+
+SEAM_PLANT = "architecture-report-customer-lookup"
+LOOKUP_TEST = "test_customer_details_are_resolved_once_per_customer"
+LOOKUP_FILE = "tests/test_report_customers.py"
+VERIFICATION_RUN_FINDING = finding(
+    LOOKUP_FILE, LOOKUP_TEST, "P1", "structure-coupling",
+    "The test patches the private `reports._customer_name`, a helper created in this slice, and asserts on its "
+    "call list. Renaming or inlining the helper breaks the test without any change in behaviour. The call count "
+    "is the spec (resolve once per report), so an interaction assertion is legitimate, but it needs a real seam. "
+    "In-slice fix: let build_report take the customer-resolver as an injected dependency, then count calls on a "
+    "fake passed through the public build_report.")
+
+
+def lookup_plant_report(item, mode):
+    return grade.grade({"findings": [item]}, REAL_KEY, mode)["plants"][SEAM_PLANT]
+
+
+@pytest.mark.parametrize("mode", ["slice", "whole_suite"])
+def test_the_real_p1_finding_that_asks_for_an_injected_dependency_is_tier_ok(mode):
+    result = lookup_plant_report(VERIFICATION_RUN_FINDING, mode)
+
+    assert result["hit"] is True
+    assert result["tier_ok"] is True
+
+
+@pytest.mark.parametrize("mode", ["slice", "whole_suite"])
+@pytest.mark.parametrize("tier", ["P1", "P2"])
+def test_a_lift_to_build_report_finding_without_a_seam_word_is_not_tier_ok(mode, tier):
+    lift = finding(LOOKUP_FILE, LOOKUP_TEST, tier, "Coupled to private lookup",
+                   "test patches the private _customer_name; lift the test to build_report")
+
+    result = lookup_plant_report(lift, mode)
+
+    assert result["hit"] is True
+    assert result["tier_ok"] is False
+
+
+@pytest.mark.parametrize("mode", ["slice", "whole_suite"])
+def test_arch_stays_tier_ok_with_or_without_a_seam_word(mode):
+    plain = finding(LOOKUP_FILE, LOOKUP_TEST, "ARCH", "Hidden lookup", "patches the private _customer_name")
+
+    assert lookup_plant_report(plain, mode)["tier_ok"] is True
+    assert lookup_plant_report({**plain, "tier": "ARCH", "summary": plain["summary"] + ", add a seam"}, mode)["tier_ok"] is True
+
+
+@pytest.mark.parametrize("mode", ["slice", "whole_suite"])
+def test_p3_with_a_seam_word_is_not_tier_ok(mode):
+    cleanup = {**VERIFICATION_RUN_FINDING, "tier": "P3"}
+
+    assert lookup_plant_report(cleanup, mode)["tier_ok"] is False
+
+
+def test_conditional_tiers_apply_per_finding_not_across_findings():
+    lift = finding(LOOKUP_FILE, LOOKUP_TEST, "P1", "Coupled", "patches the private _customer_name")
+    unrelated_seam = finding("tests/test_tax.py", None, "P2", "Seam", "inject a seam here")
+
+    report = grade.grade({"findings": [lift, unrelated_seam]}, REAL_KEY, "slice")
+
+    assert report["plants"][SEAM_PLANT]["tier_ok"] is False
+
+
+def test_a_plants_conditional_tiers_never_widen_another_plant():
+    other = {**VERIFICATION_RUN_FINDING, "file": "tests/test_discounts.py",
+             "test": "test_every_bulk_order_is_discounted", "category": "vacuous loop", "tier": "P2"}
+    report = grade.grade({"findings": [other]}, REAL_KEY, "slice")
+
+    assert report["plants"]["vacuous-loop"]["tier_ok"] is False
+    assert report["plants"][SEAM_PLANT]["hit"] is False
+
+
+def test_conditional_tier_keywords_pass_the_stem_lint():
+    keywords = [k for entry in REAL_KEY["plants"] for k in entry.get("conditional_expected", {}).get("keywords", [])]
+
+    assert keywords and not {k.lower() for k in keywords} & UNSAFE_KEYWORDS
