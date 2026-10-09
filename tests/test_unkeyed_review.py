@@ -70,7 +70,8 @@ def test_a_helper_coupling_finding_on_the_single_item_test_still_credits_helper_
 
 
 OUTBOUND_REQUEST_FINDINGS = [11, 28, 45, 57, 76]
-NETWORK_ERROR_FINDINGS = [3, 25, 54, 70, 74, 77, 86]
+NETWORK_ERROR_FINDINGS = [3, 25, 54, 70, 74, 77]
+NETWORK_ERRORS_AND_NO_SLEEP_AFTER_THE_FINAL_ATTEMPT = 86
 BOTH_RATES_GAPS_IN_ONE_FINDING = 81
 
 
@@ -84,6 +85,11 @@ def test_an_unpinned_url_or_timeout_finding_credits_only_rates_timeout_unpinned(
 def test_an_unhandled_network_error_finding_credits_only_rates_network_errors_unhandled(index):
     assert credited(index) == {"rates-network-errors-unhandled"}
     assert false_positives(index) == set()
+
+
+def test_one_finding_naming_both_the_unhandled_errors_and_the_missing_final_sleep_check_credits_both_plants():
+    assert credited(NETWORK_ERRORS_AND_NO_SLEEP_AFTER_THE_FINAL_ATTEMPT) == {
+        "rates-network-errors-unhandled", "rates-final-backoff-unpinned"}
 
 
 def test_one_finding_naming_both_the_unpinned_request_and_the_unhandled_errors_credits_both_plants():
@@ -113,7 +119,7 @@ def test_a_substring_stdout_finding_credits_calc_substring_output(index):
     assert only_credited(index, "calc-substring-output")
 
 
-@pytest.mark.parametrize("index", [13, 17, 41, 59, 63, 85])
+@pytest.mark.parametrize("index", [17, 41, 59, 63, 85])
 def test_a_subprocess_wrong_level_or_duplicate_exit_code_finding_credits_calc_cli_wrong_level(index):
     assert only_credited(index, "calc-cli-wrong-level")
 
@@ -154,8 +160,9 @@ def test_a_pt011_finding_on_the_neighbouring_invoice_lines_test_does_not_credit_
     assert {pid for pid, p in report["plants"].items() if p["hit"]} == {"broad-raises"}
 
 
-def test_a_wrong_level_finding_that_also_asks_for_the_untested_error_paths_credits_both_plants():
-    assert credited(36) == {"calc-cli-wrong-level", "calc-skip-and-commented"}
+@pytest.mark.parametrize("index", [13, 36])
+def test_a_wrong_level_finding_that_also_asks_for_the_untested_error_paths_credits_both_plants(index):
+    assert credited(index) == {"calc-cli-wrong-level", "calc-skip-and-commented"}
 
 
 def test_a_wrong_level_finding_that_also_calls_out_substring_checks_and_error_paths_credits_all_three_plants():
