@@ -59,10 +59,10 @@ def test_the_caplog_tuple_readability_point_on_the_decoy_test_is_known_noise_and
     assert grade.grade({"findings": [GOLDEN["findings"][25]]}, KEY, "slice")["known_noise_count"] == 1
 
 
-def test_an_unpinned_outbound_request_and_an_unhandled_network_error_are_hits_filed_a_tier_too_high():
+def test_an_unpinned_outbound_request_and_an_unhandled_network_error_filed_at_p1_are_tier_ok():
     assert [(pid, plant_matched(pid), REPORT["plants"][pid]["tiers_seen"], REPORT["plants"][pid]["tier_ok"])
             for pid in ("rates-timeout-unpinned", "rates-network-errors-unhandled")] == [
-        ("rates-timeout-unpinned", [14], ["P1"], False), ("rates-network-errors-unhandled", [16], ["P1"], False)]
+        ("rates-timeout-unpinned", [14], ["P1"], True), ("rates-network-errors-unhandled", [16], ["P1"], True)]
 
 
 def test_the_lint_gap_finding_on_the_lint_config_label_hits_lint_config_missing_tier_ok():
