@@ -10,6 +10,7 @@ SCHEMA = Path(__file__).resolve().parent / "findings.schema.json"
 
 
 LOGGER = logging.getLogger("grade")
+UNRATED = "UNRATED"
 
 
 class InvalidFindings(ValueError):
@@ -33,7 +34,7 @@ def validate(findings_doc, schema):
         for field in item["required"]:
             if field not in finding:
                 raise InvalidFindings(f"findings[{index}] is missing '{field}'")
-        if finding["tier"] not in item["properties"]["tier"]["enum"]:
+        if finding["tier"] not in [*item["properties"]["tier"]["enum"], UNRATED]:
             raise InvalidFindings(f"findings[{index}] has invalid tier {finding['tier']!r}")
         for field in ("file", "category", "summary"):
             if not isinstance(finding[field], str):

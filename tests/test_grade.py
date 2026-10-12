@@ -830,3 +830,16 @@ def test_noise_never_swallows_a_finding_that_should_hit_a_plant_or_decoy(realist
     hit = {pid for pid, p in report["plants"].items() if p["hit"]}
     false_positive = {did for did, d in report["decoys"].items() if d["false_positive"]}
     assert (hit, false_positive) == ({expected_plant} - {None}, {expected_decoy} - {None})
+
+
+def test_an_unrated_finding_validates_and_is_a_hit_but_never_tier_ok():
+    k = key([plant("a", "tests/test_x.py::t", slice=("P0", "P1", "P2", "P3", "ARCH", "OBSERVED"))])
+    doc = {"findings": [finding("tests/test_x.py", "t", tier=grade.UNRATED)]}
+
+    grade.validate(doc, json.loads(grade.SCHEMA.read_text()))
+    result = grade.grade(doc, k, "slice")["plants"]["a"]
+    assert (result["hit"], result["tier_ok"]) == (True, False)
+
+
+def test_unrated_is_not_offered_to_reviewers_in_the_findings_schema():
+    assert grade.UNRATED not in json.loads(grade.SCHEMA.read_text())["properties"]["findings"]["items"]["properties"]["tier"]["enum"]
